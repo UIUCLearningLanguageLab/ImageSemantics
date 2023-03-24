@@ -4,7 +4,7 @@ import copy
 import numpy as np
 from tkinter import messagebox
 from PIL import Image, ImageTk
-from image_semantics.src.relabeler import config
+from ImageSemantics.src.relabeler import config
 
 class RelabelerApp:
 

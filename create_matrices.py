@@ -1,11 +1,12 @@
 import os
 import sys
+import numpy as np
 image_semantics_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(image_semantics_dir)
-from image_semantics.src.dataset import datasets
-from image_semantics.src.models import matrices
-from image_semantics.src.figures import figures
-import numpy as np
+from src.dataset import datasets
+from src.models import matrices
+from src.figures import figures
+
 
 
 def main():
