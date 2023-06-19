@@ -459,7 +459,7 @@ class RelabelerApp:
             image_filename = (instance.image.path + "/" + instance.image.unique_mask_file_name)
         else:
             raise Exception('Unrecognized image version', version)
-
+        print("LOOK HERE!", instance.image.path, image_filename)
         pil_image = Image.open(image_filename).convert('RGB')
         resized_image = self.resize_image(pil_image)
         image_matrix = np.asarray(copy.deepcopy(resized_image))

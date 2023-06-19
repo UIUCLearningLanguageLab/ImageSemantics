@@ -1,9 +1,10 @@
+import copy
 import os
 import json
 import jsonpickle
 import pickle
+import random
 from datetime import datetime
-import shutil
 
 
 class Dataset:
@@ -32,19 +33,7 @@ class Dataset:
                                                                                    self.num_instances)
         return output_string
 
-    @staticmethod
-    def create_dataset_model_output_dir(output_dir_path, overwrite):
-        # create the directory if it doesn't exist, or if you want to overwrite the existing one
-        if os.path.exists(output_dir_path):
-            if overwrite:
-                shutil.rmtree(output_dir_path)
-            else:
-                raise FileExistsError(f"The directory {output_dir_path} already exists.")
-        os.mkdir(output_dir_path)
-
-    def output_descriptive_info(self, output_path, overwrite=False):
-
-        self.create_dataset_model_output_dir(output_path, overwrite)
+    def output_descriptive_info(self, output_path):
 
         with open(output_path + "/categories.csv", "w") as file:
             file.write("index,category,freq\n")
@@ -83,11 +72,11 @@ class Dataset:
     def load_sa_dataset(self, sa_dataset_path):
 
         self.init_dataset()
-
         self.sa_dataset_path = sa_dataset_path
+        self.add_to_dataset(sa_dataset_path)
 
-        directory_list = os.listdir(sa_dataset_path)
-        for subdirectory in directory_list:
+    def add_to_dataset(self, sa_dataset_path):
+        for subdirectory in os.listdir(sa_dataset_path):
             if subdirectory[0] != ".":
                 subdirectory_path = sa_dataset_path + "/" + subdirectory
                 file_list = os.listdir(subdirectory_path)
@@ -103,15 +92,16 @@ class Dataset:
         for i in range(self.num_images):
             self.image_index_dict[self.image_name_list[i]] = i
 
-    def load_dataset(self, path, image_adjustment=None):
+    def load_dataset(self, path, new_image_path=None):
         with open(path, 'rb') as f:
             loaded_obj = pickle.load(f)
             self.__dict__.update(loaded_obj.__dict__)
         self.path = path
 
-        if image_adjustment is not None:
+        if new_image_path is not None:
             for image in self.image_dict.values():
-                image.path = "../" + image.path
+                old_path_list = image.path.split("/")
+                image.path = new_image_path + old_path_list[-1]
 
     def save_dataset(self, path=None, include_json=False):
 
@@ -132,7 +122,55 @@ class Dataset:
                 f.write(jsonpickle.encode(self, indent=4))
 
     def add_subcategory(self, category, subcategory_name):
-        self.category_dict[category].subcategory_dict[subcategory_name] = Category(subcategory_name, self.category_dict[category].color)
+        self.category_dict[category].subcategory_dict[subcategory_name] = Category(subcategory_name,
+                                                                                   self.category_dict[category].color)
+
+    def get_subcategory_category_dict(self):
+        subcategory_category_dict = {}
+        for category_name in self.category_name_list:
+            category = self.category_dict[category_name]
+
+            for subcategory_name in category.subcategory_dict:
+                subcategory_category_dict[subcategory_name] = category_name
+
+        return subcategory_category_dict
+
+    def remove_all_subcategories(self):
+        for category_name in self.category_name_list:
+            category = self.category_dict[category_name]
+
+            for subcategory_name in category.subcategory_dict:
+                subcategory = category.subcategory_dict[subcategory_name]
+                for instance_id in subcategory.instance_dict:
+                    instance = subcategory.instance_dict[instance_id]
+                    instance.subcategory = "None"
+                    category.instance_dict[instance_id] = instance
+            category.subcategory_dict = {}
+
+    def create_random_subcategories(self, n):
+
+        self.remove_all_subcategories()
+
+        for category_name in self.category_name_list:
+            category = self.category_dict[category_name]
+
+            for i in range(n):
+                subcategory_name = category_name + str(i + 1)
+                category.subcategory_dict[subcategory_name] = Category(subcategory_name, category.color)
+
+            category_instance_name_list = copy.deepcopy(list(category.instance_dict.keys()))
+            random.shuffle(category_instance_name_list)
+
+            num_instances = len(category_instance_name_list)
+
+            for i in range(num_instances):
+                instance_name = category_instance_name_list[i]
+                instance = category.instance_dict[instance_name]
+                subcategory_index = (i % n) + 1
+                subcategory_name = category_name + str(subcategory_index)
+                instance.subcategory = subcategory_name
+                category.subcategory_dict[subcategory_name].instance_dict[instance_name] = instance
+                del category.instance_dict[instance_name]
 
 
 class Image:
