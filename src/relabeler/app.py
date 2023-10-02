@@ -6,13 +6,17 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from ImageSemantics.src.relabeler import config
 
+
 class RelabelerApp:
 
     def __init__(self, dataset):
         self.dataset = dataset
-        self.dataset_path = None
         self.root = tk.Tk()
         self.interface_frame = None
+        self.current_category_interface_frame = None
+        self.relabel_interface_frame = None
+        self.add_remove_subcategory_interface_frame = None
+        self.misc_interface_frame = None
         self.image_frame = None
         self.interface_subframe_list = None
         self.set_current_category_option = None
@@ -23,12 +27,6 @@ class RelabelerApp:
         self.image_name_label = None
         self.top_image_label = None
         self.bottom_image_label = None
-        self.current_category_var = None
-        self.current_subcategory_var = None
-        self.change_subcategory_category_var = None
-        self.change_subcategory_category = None
-        self.relabel_category_var = None
-        self.relabel_subcategory_var = None
 
         self.main_window_dimensions = config.Config.main_window_dimensions
         self.small_image_dimensions = config.Config.small_image_dimensions
@@ -52,12 +50,21 @@ class RelabelerApp:
         self.current_fill_color_rgb = self.color_option_dict[self.current_fill_color]
 
         self.category_list = None
+
         self.current_category = None
-        self.current_subcategory = None
+        self.current_category_var = None
         self.current_subcategory_list = None
+        self.current_subcategory = None
+        self.current_subcategory_var = None
+
         self.relabel_category = None
-        self.relabel_subcategory = None
+        self.relabel_category_var = None
         self.relabel_subcategory_list = None
+        self.relabel_subcategory = None
+        self.relabel_subcategory_var = None
+
+        self.add_remove_subcategory_category = None
+        self.add_remove_subcategory_category_var = None
 
         self.num_image_rows = config.Config.num_image_rows
         self.num_image_columns = config.Config.num_image_columns
@@ -75,19 +82,23 @@ class RelabelerApp:
 
         self.unsaved_changes_made = False
 
+        print(self.dataset.subcategory_df)
+
         self.init_categories()
         self.create_main_window()
         self.create_interface_frame()
         self.create_image_frame()
 
     def init_categories(self):
-        self.category_list = self.dataset.category_name_list
-        self.category_list.sort()
+        self.category_list = self.get_category_list()
         self.current_category = self.relabel_category = self.category_list[0]
 
-        self.current_subcategory_list = self.relabel_subcategory_list = self.get_subcategory_list(self.current_category)
+        subcategory_list = self.get_subcategory_list(self.current_category)
 
+        self.current_subcategory_list = subcategory_list
         self.current_subcategory = self.current_subcategory_list[0]
+
+        self.relabel_subcategory_list = subcategory_list
         self.relabel_subcategory = self.relabel_subcategory_list[0]
 
     def create_main_window(self):
@@ -96,9 +107,6 @@ class RelabelerApp:
                                           self.main_window_dimensions[1]))
         self.root.title("Image Relabeler")
         self.root.protocol("WM_DELETE_WINDOW", self.quit)
-
-    # def disable_close_button(self):
-    #     pass
 
     def create_preview_images(self):
         image_start_x = 5
@@ -181,52 +189,39 @@ class RelabelerApp:
         self.create_big_images(x)
 
     def create_interface_frame(self):
-        self.interface_frame = tk.Frame(self.root,
-                                        height=self.main_window_dimensions[1],
-                                        width=self.interface_frame_width,
-                                        bg="grey20")
-        self.interface_frame.pack(side=tk.LEFT)
+        if self.interface_frame is None:
+            self.interface_frame = tk.Frame(self.root,
+                                            height=self.main_window_dimensions[1],
+                                            width=self.interface_frame_width,
+                                            bg="grey20")
+            self.interface_frame.pack(side=tk.LEFT)
 
-        self.interface_subframe_list = []
-        for i in range(4):
-            if i == 3:
-                the_height = self.main_window_dimensions[0] - 3 * self.mini_frame_height
-            else:
-                the_height = self.mini_frame_height
-            new_frame = tk.Frame(self.interface_frame,
-                                 width=self.interface_frame_width,
-                                 height=the_height,
-                                 bg="grey20")
-            new_frame.pack()
-            self.interface_subframe_list.append(new_frame)
+        if self.current_category_interface_frame is not None:
+            self.current_category_interface_frame.destroy()
+        if self.relabel_interface_frame is not None:
+            self.relabel_interface_frame.destroy()
+        if self.add_remove_subcategory_interface_frame is not None:
+            self.add_remove_subcategory_interface_frame.destroy()
+        if self.misc_interface_frame is not None:
+            self.misc_interface_frame.destroy()
 
-        self.create_current_category_interface(self.interface_subframe_list[0])
-        self.create_relabel_interface(self.interface_subframe_list[1])
-        self.create_new_subcategory_interface(self.interface_subframe_list[2])
-        self.create_misc_interface(self.interface_subframe_list[3])
+        self.create_current_category_interface()
+        self.create_relabel_interface()
+        self.create_add_remove_subcategory_interface()
+        self.create_misc_interface()
 
-    def create_misc_interface(self, parent_frame):
-        tk.Label(parent_frame, text="Change Highlight Color", bg="grey20").place(x=10, y=0)
+    def create_current_category_interface(self):
 
-        current_color_var = tk.StringVar()
-        current_color_var.set(self.color_option_list[0])
-        self.fill_color_option = tk.OptionMenu(parent_frame,
-                                               current_color_var,
-                                               *self.color_option_list,
-                                               command=self.set_current_color)
-        self.fill_color_option.config(width=10)
-        self.fill_color_option.place(x=10, y=25)
+        self.current_category_interface_frame = tk.Frame(self.interface_frame,
+                                                         width=self.interface_frame_width,
+                                                         height=self.mini_frame_height,
+                                                         bg="grey20")
+        self.current_category_interface_frame.pack()
 
-        tk.Button(parent_frame, name="save_button", text="Save", width=8,
-                  command=self.save).place(x=5, y=51)
-        tk.Button(parent_frame, name="quit_button", text="Quit", width=8,
-                  command=self.quit).place(x=5, y=81)
-
-    def create_current_category_interface(self, parent_frame):
-        tk.Label(parent_frame, text="Current Category", bg="grey20").place(x=10, y=0)
+        tk.Label(self.current_category_interface_frame, text="Current Category", bg="grey20").place(x=10, y=0)
         self.current_category_var = tk.StringVar()
         self.current_category_var.set(self.current_category)
-        self.set_current_category_option = tk.OptionMenu(parent_frame,
+        self.set_current_category_option = tk.OptionMenu(self.current_category_interface_frame,
                                                          self.current_category_var,
                                                          *self.category_list,
                                                          command=self.set_current_category)
@@ -235,98 +230,122 @@ class RelabelerApp:
 
         self.current_subcategory_var = tk.StringVar()
         self.current_subcategory_var.set(self.current_subcategory)
-        self.set_current_subcategory_option = tk.OptionMenu(parent_frame,
+
+        self.current_subcategory_list = self.get_subcategory_list(self.current_category)
+
+        self.set_current_subcategory_option = tk.OptionMenu(self.current_category_interface_frame,
                                                             self.current_subcategory_var,
                                                             *self.current_subcategory_list,
                                                             command=self.set_current_subcategory)
         self.set_current_subcategory_option.config(width=10)
         self.set_current_subcategory_option.place(x=10, y=51)
-        tk.Button(parent_frame, name="show_images_button", text="Show Images",
+        tk.Button(self.current_category_interface_frame, name="show_images_button", text="Show Images",
                   command=self.show_previews, width=10).place(x=10, y=81)
 
-    def create_new_subcategory_interface(self, parent_frame):
-        tk.Label(parent_frame, text="+/- Subcategory", bg="grey20").place(x=10, y=0)
-        self.change_subcategory_category = self.category_list[0]
-        self.change_subcategory_category_var = tk.StringVar()
-        self.change_subcategory_category_var.set(self.category_list[0])
-        self.set_relabel_category_option = tk.OptionMenu(parent_frame,
-                                                         self.change_subcategory_category_var,
+    def create_add_remove_subcategory_interface(self):
+
+        self.add_remove_subcategory_interface_frame = tk.Frame(self.interface_frame,
+                                                               width=self.interface_frame_width,
+                                                               height=self.mini_frame_height,
+                                                               bg="grey20")
+        self.add_remove_subcategory_interface_frame.pack()
+
+        tk.Label(self.add_remove_subcategory_interface_frame, text="+/- Subcategory", bg="grey20").place(x=10, y=0)
+        self.add_remove_subcategory_category = self.category_list[0]
+        self.add_remove_subcategory_category_var = tk.StringVar()
+        self.add_remove_subcategory_category_var.set(self.category_list[0])
+        self.set_relabel_category_option = tk.OptionMenu(self.add_remove_subcategory_interface_frame,
+                                                         self.add_remove_subcategory_category_var,
                                                          *self.category_list,
                                                          command=self.set_change_subcategory_category)
         self.set_relabel_category_option.config(width=10)
         self.set_relabel_category_option.place(x=10, y=25)
 
-        self.subcategory_entry = tk.Entry(parent_frame, name="subcategory_entry", bg="grey25", fg="white", width=15)
+        self.subcategory_entry = tk.Entry(self.add_remove_subcategory_interface_frame,
+                                          name="subcategory_entry", bg="grey25", fg="white", width=15)
         self.subcategory_entry.place(x=10, y=55)
 
-        tk.Button(parent_frame, name="add_subcategory_button", text="Add Subcategory",
+        tk.Button(self.add_remove_subcategory_interface_frame, name="add_subcategory_button", text="Add Subcategory",
                   command=self.add_subcategory, width=12).place(x=10, y=81)
-        tk.Button(parent_frame, name="remove_subcategory_button", text="Remove Subcategory",
+        tk.Button(self.add_remove_subcategory_interface_frame,
+                  name="remove_subcategory_button",
+                  text="Remove Subcategory",
                   command=self.remove_subcategory, width=12).place(x=10, y=107)
 
+    def create_relabel_interface(self):
 
-    def create_relabel_interface(self, parent_frame):
-        tk.Label(parent_frame, text="Relabel Category", bg="grey20").place(x=10, y=0)
+        self.relabel_interface_frame = tk.Frame(self.interface_frame,
+                                                width=self.interface_frame_width,
+                                                height=self.mini_frame_height,
+                                                bg="grey20")
+        self.relabel_interface_frame.pack()
+
+        tk.Label(self.relabel_interface_frame, text="Relabel Category", bg="grey20").place(x=10, y=0)
         self.relabel_category_var = tk.StringVar()
         self.relabel_category_var.set(self.relabel_category)
-        self.set_relabel_category_option = tk.OptionMenu(parent_frame,
+        self.set_relabel_category_option = tk.OptionMenu(self.relabel_interface_frame,
                                                          self.relabel_category_var,
                                                          *self.category_list,
                                                          command=self.set_relabel_category)
         self.set_relabel_category_option.config(width=10)
         self.set_relabel_category_option.place(x=10, y=25)
 
+        self.relabel_subcategory_list = self.get_subcategory_list(self.relabel_category)
+
         self.relabel_subcategory_var = tk.StringVar()
         self.relabel_subcategory_var.set(self.relabel_subcategory)
-        self.set_relabel_subcategory_option = tk.OptionMenu(parent_frame,
+        self.set_relabel_subcategory_option = tk.OptionMenu(self.relabel_interface_frame,
                                                             self.relabel_subcategory_var,
                                                             *self.relabel_subcategory_list,
                                                             command=self.set_relabel_subcategory)
         self.set_relabel_subcategory_option.config(width=10)
         self.set_relabel_subcategory_option.place(x=10, y=51)
-        tk.Button(parent_frame, name="relabel_images_button", text="Relabel Images",
+        tk.Button(self.relabel_interface_frame, name="relabel_images_button", text="Relabel Images",
                   command=self.relabel_images, width=10).place(x=10, y=81)
 
+    def create_misc_interface(self):
+
+        the_height = self.main_window_dimensions[0] - 3 * self.mini_frame_height
+        self.misc_interface_frame = tk.Frame(self.interface_frame,
+                                             width=self.interface_frame_width,
+                                             height=the_height,
+                                             bg="grey20")
+        self.misc_interface_frame.pack()
+
+        tk.Label(self.misc_interface_frame, text="Change Highlight Color", bg="grey20").place(x=10, y=0)
+
+        current_color_var = tk.StringVar()
+        current_color_var.set(self.color_option_list[0])
+        self.fill_color_option = tk.OptionMenu(self.misc_interface_frame,
+                                               current_color_var,
+                                               *self.color_option_list,
+                                               command=self.set_current_color)
+        self.fill_color_option.config(width=10)
+        self.fill_color_option.place(x=10, y=25)
+
+        tk.Button(self.misc_interface_frame, name="save_button", text="Save", width=8,
+                  command=self.save).place(x=5, y=51)
+        tk.Button(self.misc_interface_frame, name="quit_button", text="Quit", width=8,
+                  command=self.quit).place(x=5, y=81)
+
+    def get_category_list(self):
+        category_list = self.dataset.get_category_list()
+        category_list.sort()
+        return category_list
+
     def get_subcategory_list(self, category):
-        subcategory_list = list(self.dataset.category_dict[category].subcategory_dict.keys())
+        self.dataset.generate_subcategory_df()
+        subcategory_list = self.dataset.get_subcategory_list(category)
         subcategory_list.sort()
-        subcategory_list.insert(0, "None")
+        if "None" in subcategory_list:
+            subcategory_list.remove("None")
+            subcategory_list.insert(0, "None")
         return subcategory_list
 
     def set_current_category(self, selection):
         self.current_category = selection
         self.current_category_var.set(selection)
-        self.update_current_subcategory_list()
-        self.current_subcategory = self.current_subcategory_list[0]
-        print("Current category changed to {}".format(self.current_category))
 
-    def set_current_subcategory(self, selection):
-        self.current_subcategory = selection
-        self.current_subcategory_var.set(selection)
-        print("Current subcategory changed to {}".format(self.current_subcategory))
-
-    def set_change_subcategory_category(self, selection):
-        self.change_subcategory_category = selection
-        self.change_subcategory_category_var.set(selection)
-        print("Current change subcategory category changed to {}".format(self.change_subcategory_category))
-
-    def set_relabel_category(self, selection):
-        self.relabel_category = selection
-        self.relabel_category_var.set(selection)
-        self.update_relabel_subcategory_list()
-        self.relabel_subcategory = self.relabel_subcategory_list[0]
-        print("Relabel category changed to {}".format(self.relabel_category))
-
-    def set_relabel_subcategory(self, selection):
-        self.relabel_subcategory = selection
-        self.relabel_subcategory_var.set(selection)
-        print("Relabel subcategory changed to {}".format(self.relabel_subcategory))
-
-    def set_current_color(self, selection):
-        self.current_fill_color = selection
-        self.current_fill_color_rgb = self.color_option_dict[self.current_fill_color]
-
-    def update_current_subcategory_list(self):
         self.current_subcategory_list = self.get_subcategory_list(self.current_category)
         self.set_current_subcategory_option['menu'].delete(0, 'end')
 
@@ -340,55 +359,82 @@ class RelabelerApp:
             self.current_subcategory = self.current_subcategory_list[0]
             self.set_current_subcategory_option['text'] = self.current_subcategory
 
-    def update_relabel_subcategory_list(self):
-        self.relabel_subcategory_list = self.get_subcategory_list(self.relabel_category)
+        self.current_subcategory = self.current_subcategory_list[0]
+        print("Current category changed to {}".format(self.current_category))
 
-        menu = self.set_relabel_subcategory_option['menu']
-        menu.delete(0, 'end')
+    def set_current_subcategory(self, selection):
+        self.current_subcategory = selection
+        self.current_subcategory_var.set(selection)
+        print("Current subcategory changed to {}".format(self.current_subcategory))
+
+    def set_relabel_category(self, selection):
+        self.relabel_category = selection
+        self.relabel_category_var.set(selection)
+
+        self.relabel_subcategory_list = self.get_subcategory_list(self.relabel_category)
+        menu = self.set_relabel_subcategory_option['menu'].delete(0, 'end')
 
         # Add new menu options based on the current category
         for relabel_subcategory in self.relabel_subcategory_list:
             menu.add_command(label=relabel_subcategory,
                              command=lambda subcategory=relabel_subcategory: self.set_relabel_subcategory(subcategory))
 
+        self.relabel_subcategory = self.relabel_subcategory_list[0]
+        print("Relabel category changed to {}".format(self.relabel_category))
+
+    def set_relabel_subcategory(self, selection):
+        self.relabel_subcategory = selection
+        self.relabel_subcategory_var.set(selection)
+        print("Relabel subcategory changed to {}".format(self.relabel_subcategory))
+
+    def set_change_subcategory_category(self, selection):
+        self.add_remove_subcategory_category = selection
+        self.add_remove_subcategory_category_var.set(selection)
+        print("Current change subcategory category changed to {}".format(self.add_remove_subcategory_category))
+
+    def set_current_color(self, selection):
+        self.current_fill_color = selection
+        self.current_fill_color_rgb = self.color_option_dict[self.current_fill_color]
+
     def add_subcategory(self):
-        subcategory = self.subcategory_entry.get()
-        if subcategory:
-            if subcategory not in self.dataset.category_dict[self.change_subcategory_category].subcategory_dict:
-                self.dataset.add_subcategory(self.change_subcategory_category, subcategory)
-                self.update_current_subcategory_list()
-                self.update_relabel_subcategory_list()
-                self.unsaved_changes_made = True
-                print("Added {} to {}".format(subcategory, self.change_subcategory_category))
-            else:
-                print("Cannot add {} to {} it already exists".format(subcategory, self.change_subcategory_category))
-            self.subcategory_entry.delete(0, 'end')
+        new_subcategory = self.subcategory_entry.get()
+        print("Adding subcategory", new_subcategory)
+        self.dataset.add_subcategory(self.add_remove_subcategory_category, new_subcategory)
+        if self.add_remove_subcategory_category == self.current_category:
+            self.create_interface_frame()
+
+        if self.add_remove_subcategory_category == self.relabel_category:
+            self.create_interface_frame()
+        print(self.dataset.subcategory_df)
 
     def remove_subcategory(self):
         subcategory = self.subcategory_entry.get()
-        print(subcategory)
+        print("Removing subcategory", subcategory)
         if subcategory:
             if subcategory == "None":
-                tk.messagebox.showerror("Cannot remove subcategory 'None'")
-            elif subcategory in self.dataset.category_dict[self.change_subcategory_category].subcategory_dict:
-                print(self.change_subcategory_category, self.dataset.category_dict[self.change_subcategory_category].subcategory_dict)
-                num_instances = len(self.dataset.category_dict[self.change_subcategory_category].subcategory_dict[subcategory].instance_dict)
-                if num_instances:
-                    tk.messagebox.showerror("Cannot remove subcategory with instances ({})".format(num_instances))
-                else:
-                    del self.dataset.category_dict[self.change_subcategory_category].subcategory_dict[subcategory]
-                    # TODO deal with what happens if removed subcategory is current_subcategory or relabel_subcategory
-                    self.update_current_subcategory_list()
-                    self.update_relabel_subcategory_list()
-                    self.unsaved_changes_made = True
-                    messagebox.showinfo(message="Removed {} from {}".format(subcategory,
-                                                                            self.change_subcategory_category))
+                tk.messagebox.showerror("ERROR", "Cannot remove subcategory 'None'")
             else:
-                print("HERE")
-                tk.messagebox.showerror(
-                    message="Cannot remove {} from {} as it doesn't exist".format(subcategory,
-                                                                                  self.change_subcategory_category))
-            self.subcategory_entry.delete(0, 'end')
+                filtered_rows = self.dataset.subcategory_df[(self.dataset.subcategory_df['subcategory'] == subcategory) & (self.dataset.subcategory_df['category'] == self.add_remove_subcategory_category)]
+                if filtered_rows.empty:
+                    tk.messagebox.showerror("ERROR", "Cannot remove because it doesn't exist in that category")
+                else:
+                    if filtered_rows.iloc[0]['count'] == 0:
+                        self.dataset.remove_subcategory(self.add_remove_subcategory_category, subcategory)
+
+                        if self.add_remove_subcategory_category == self.current_category:
+                            self.create_interface_frame()
+
+                        if self.add_remove_subcategory_category == self.relabel_category:
+                            self.create_interface_frame()
+
+                    else:
+                        tk.messagebox.showerror("ERROR", "Cannot remove subcategory with assigned instances")
+        print(self.dataset.subcategory_df)
+
+    def get_preview_instance_list(self):
+        filtered_df = self.dataset.instance_df[(self.dataset.instance_df['category'] == self.preview_category) & (self.dataset.instance_df['subcategory'] == self.preview_subcategory)]
+        instance_list = filtered_df.values.tolist()
+        return instance_list
 
     def show_previews(self):
 
@@ -404,12 +450,7 @@ class RelabelerApp:
         self.preview_category = self.current_category
         self.preview_subcategory = self.current_subcategory
 
-        if self.preview_subcategory == "None":
-            instance_dict = self.dataset.category_dict[self.preview_category].instance_dict
-        else:
-            instance_dict = self.dataset.category_dict[self.preview_category].subcategory_dict[self.preview_subcategory].instance_dict
-
-        instance_list = list(instance_dict.values())
+        instance_list = self.get_preview_instance_list()
         num_instances = len(instance_list)
 
         if num_instances >= self.max_image_labels:
@@ -427,11 +468,16 @@ class RelabelerApp:
             for i in range(num_images_to_show):
                 self.current_selections_list.append(False)
 
-                instance = instance_list[self.preview_index]
-                self.preview_image_list.append(instance)
+                instance_data_list = instance_list[self.preview_index]
 
-                raw_image_filename = (instance.image.path + "/" + instance.image.jpg_file_name)
-                pil_image = Image.open(raw_image_filename)
+                instance_data_list += self.get_image_data(instance_data_list[4])
+
+                self.preview_image_list.append(instance_data_list)
+
+                raw_image_path = self.get_image_path(instance_data_list)
+                # .jpg, .jpg___save.png
+
+                pil_image = Image.open(raw_image_path + ".jpg")
                 resized_image = pil_image.resize((self.small_image_dimensions[0],
                                                   self.small_image_dimensions[1]),
                                                  Image.ANTIALIAS)
@@ -446,6 +492,22 @@ class RelabelerApp:
             tk.messagebox.showinfo(message="There are no images in {}:{} to show.".format(self.preview_category,
                                                                                           self.preview_subcategory))
 
+    def get_image_data(self, image_id):
+        image_data = self.dataset.image_df[self.dataset.image_df['id'] == image_id].iloc[0].values.tolist()
+        return image_data
+
+    def get_image_path(self, instance_data_list):
+        # ../superannotate_datasets/DTW2/video-7was5_DTW_2022_01_03_1640/DTW_2022_01_03_1640_013300.jpg
+        video_name = instance_data_list[7]
+        participant = instance_data_list[8]
+        dt = instance_data_list[9]
+        frame = instance_data_list[10]
+
+        path = self.dataset.sa_dataset_path + "/" + video_name + "_" + participant + "_" + dt + "/"
+        filename = path + participant + "_" + dt + "_" + frame
+
+        return filename
+
     def resize_image(self, input_image):
         rescaled_x = int(self.small_image_dimensions[0] * self.large_image_scale)
         rescaled_y = int(self.small_image_dimensions[1] * self.large_image_scale)
@@ -453,13 +515,15 @@ class RelabelerApp:
         return output_image
 
     def get_image_matrix(self, instance, version):
+
+        raw_image_path = self.get_image_path(instance)
+
         if version == 'raw':
-            image_filename = (instance.image.path + "/" + instance.image.jpg_file_name)
+            image_filename = (raw_image_path + ".jpg")
         elif version == 'unique':
-            image_filename = (instance.image.path + "/" + instance.image.unique_mask_file_name)
+            image_filename = (raw_image_path + ".jpg___save.png")
         else:
             raise Exception('Unrecognized image version', version)
-        print("LOOK HERE!", instance.image.path, image_filename)
         pil_image = Image.open(image_filename).convert('RGB')
         resized_image = self.resize_image(pil_image)
         image_matrix = np.asarray(copy.deepcopy(resized_image))
@@ -468,7 +532,7 @@ class RelabelerApp:
     def get_recolored_target_instance_image(self, raw_image_matrix, current_instance, label_counter):
         unique_image_matrix = self.get_image_matrix(current_instance, "unique")
         target_image_matrix = copy.deepcopy(raw_image_matrix)
-        current_instance_hex_rgb = current_instance.color
+        current_instance_hex_rgb = current_instance[3]
         r, g, b = [int(current_instance_hex_rgb[i:i + 2], 16) for i in (1, 3, 5)]
 
         target_color = np.array([r, g, b])
@@ -489,6 +553,7 @@ class RelabelerApp:
         if self.preview_image_list is not None:
             if label_counter < len(self.preview_image_list):
                 current_instance = self.preview_image_list[label_counter]
+
                 raw_image_matrix = self.get_image_matrix(current_instance, "raw")
                 resized_raw_image = Image.fromarray(np.uint8(raw_image_matrix))
 
@@ -498,8 +563,8 @@ class RelabelerApp:
 
                 self.show_image(resized_raw_image, self.top_image_label)
                 self.show_image(target_image, self.bottom_image_label)
-
-                self.image_name_label.configure(text=current_instance.image.name)
+                image_name = current_instance[8] + "_" + current_instance[7] + "_" + current_instance[10]
+                self.image_name_label.configure(text=image_name)
 
                 self.root.update()
 
@@ -523,62 +588,19 @@ class RelabelerApp:
                     self.current_selections_list[label_counter] = True
 
     def change_image_category(self, instance):
-        # TODO Known Bug: if you change an instance's category to a new category, with an old subcategory that doesnt exist in
-        # the new category, I am not sure what happens
-
-        old_category = instance.category
-        old_subcategory = instance.subcategory
-
-        if instance.category != self.relabel_category:
-
-            if instance.id_number in self.dataset.category_dict[old_category].instance_dict or instance.id_number in self.dataset.category_dict[old_category].subcategory_dict[old_subcategory].instance_dict:
-
-                if instance.id_number not in self.dataset.category_dict[self.relabel_category].instance_dict:
-
-                    # remove from the old category
-                    if old_subcategory == "None":
-                        del self.dataset.category_dict[old_category].instance_dict[instance.id_number]
-                        instance.subcategory = self.relabel_subcategory
-                    elif old_subcategory in self.dataset.category_dict[old_category].subcategory_dict:
-                        del self.dataset.category_dict[old_category].subcategory_dict[old_subcategory].instance_dict[
-                            instance.id_number]
-                        instance.subcategory = self.relabel_subcategory
-                    else:
-                        print("Cant change category due to problem with the subcategory")
-
-                    # add to the new category
-                    if self.relabel_subcategory == "None":
-                        self.dataset.category_dict[self.relabel_category].instance_dict[instance.id_number] = instance
-                        instance.category = self.relabel_category
-                    elif self.relabel_subcategory in self.dataset.category_dict[self.relabel_category].subcategory_dict:
-                        self.dataset.category_dict[self.relabel_category].subcategory_dict[self.relabel_subcategory].instance_dict[instance.id_number] = instance
-                        instance.category = self.relabel_category
-                    else:
-                        print("Cant change category into subcategory that the category doesnt have. Create the subcategory first.")
-                else:
-                    print("The instance is already in the new category")
-            else:
-                print("The instance is not in the old category instance dict")
-        else:
-            print("The instance's category and the relabel category are the same")
+        messagebox.showinfo(message="This feature is not yet implemented")
 
     def change_image_subcategory(self, instance):
+        print("Changing image subcategory")
+        print(instance)
 
-        old_subcategory = instance.subcategory
+        index = instance[0]
+        old_subcategory = instance[2]
 
-        if instance.id_number not in self.dataset.category_dict[self.relabel_category].subcategory_dict[self.relabel_subcategory].instance_dict:
-            if old_subcategory == "None":
-                self.dataset.category_dict[self.relabel_category].subcategory_dict[self.relabel_subcategory].instance_dict[instance.id_number] = instance
-                del self.dataset.category_dict[self.relabel_category].instance_dict[instance.id_number]
-                instance.subcategory = self.relabel_subcategory
-                self.unsaved_changes_made = True
-            elif instance.id_number in self.dataset.category_dict[self.relabel_category].subcategory_dict[old_subcategory].instance_dict:
-                self.dataset.category_dict[self.relabel_category].subcategory_dict[self.relabel_subcategory].instance_dict[instance.id_number] = instance
-                del self.dataset.category_dict[self.relabel_category].subcategory_dict[old_subcategory].instance_dict[instance.id_number]
-                instance.subcategory = self.relabel_subcategory
-                self.unsaved_changes_made = True
-            else:
-                messagebox.showerror(message="Can't change subcategory because of problem with existing subcategory")
+        if old_subcategory != self.relabel_subcategory:
+            self.dataset.instance_df.loc[self.dataset.instance_df['id'] == index, 'subcategory'] = self.relabel_subcategory
+            self.unsaved_changes_made = True
+            self.dataset.generate_subcategory_df()
         else:
             messagebox.showerror(message="Can't change subcategory because already in subcategory")
 
@@ -597,7 +619,9 @@ class RelabelerApp:
                     if response:
                         self.change_image_category(current_instance)
                 else:
+
                     self.change_image_subcategory(current_instance)
+        print(self.dataset.subcategory_df)
         self.show_previews()
 
     def save(self):
@@ -607,6 +631,9 @@ class RelabelerApp:
 
     def quit(self):
         if self.unsaved_changes_made:
-            messagebox.showerror(message="You cannot quit without saving changes")
+            response = messagebox.askyesno(
+                "WARNING", "You are attempting to quit without saving changes. Are you sure you want to quit?")
+            if response:
+                self.root.destroy()
         else:
             self.root.destroy()
