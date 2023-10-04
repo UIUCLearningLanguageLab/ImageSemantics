@@ -481,13 +481,17 @@ class RelabelerApp:
         print(self.dataset.subcategory_df)
 
     def get_preview_instance_list(self):
-
         if self.current_video == "ALL":
             filtered_df = self.dataset.instance_df[(self.dataset.instance_df['category'] == self.preview_category) & (
                         self.dataset.instance_df['subcategory'] == self.preview_subcategory)]
         else:
+            video_info = self.current_video.split("-")
+            participant = video_info[0]
+            video_name = video_info[1]
             filtered_df = self.dataset.instance_df[(self.dataset.instance_df['category'] == self.preview_category) & (
-                    self.dataset.instance_df['subcategory'] == self.preview_subcategory) & (self.dataset.instance_df['video_name'] == self.current_video)]
+                    self.dataset.instance_df['subcategory'] == self.preview_subcategory) & (
+                    self.dataset.instance_df['participant'] == participant) & (
+                    self.dataset.instance_df['video_name'] == int(video_name))]
 
         instance_list = filtered_df.values.tolist()
 
