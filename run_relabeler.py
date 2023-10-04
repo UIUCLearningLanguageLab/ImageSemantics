@@ -8,7 +8,7 @@ from src.relabeler import app
 
 def main():
     dataset_path = '../data/'
-    dataset_name = 'DTW3_human.pkl'
+    dataset_name = 'DTW_human.pkl'
 
     the_dataset = datasets.Dataset()
     the_dataset.load_dataset(dataset_path, dataset_name)
