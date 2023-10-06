@@ -655,7 +655,7 @@ class RelabelerApp:
 
         if old_subcategory != self.relabel_subcategory:
             self.dataset.instance_df.loc[self.dataset.instance_df['instance_id'] == index, 'subcategory'] = self.relabel_subcategory
-            self.dataset.instace_df.loc[self.dataset.instance_df['instance_id'] == index, 'last_modified'] = datetime.datetime.now().replace(microsecond=0)
+            self.dataset.instance_df.loc[self.dataset.instance_df['instance_id'] == index, 'last_modified'] = datetime.datetime.now().replace(microsecond=0)
 
 
             self.unsaved_changes_made = True
