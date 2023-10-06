@@ -388,6 +388,7 @@ class RelabelerApp:
     def set_current_video(self, selection):
         self.current_video = selection
         self.current_video_var.set(selection)
+        self.preview_index = 0
 
         # get the current image_list
         print("Current video changed to {}".format(self.current_video))
@@ -395,6 +396,7 @@ class RelabelerApp:
     def set_current_category(self, selection):
         self.current_category = selection
         self.current_category_var.set(selection)
+        self.preview_index = 0
 
         self.current_subcategory_list = self.get_subcategory_list(self.current_category)
         self.set_current_subcategory_option['menu'].delete(0, 'end')
@@ -413,6 +415,7 @@ class RelabelerApp:
         print("Current category changed to {}".format(self.current_category))
 
     def set_current_subcategory(self, selection):
+        self.preview_index = 0
         self.current_subcategory = selection
         self.current_subcategory_var.set(selection)
         print("Current subcategory changed to {}".format(self.current_subcategory))
