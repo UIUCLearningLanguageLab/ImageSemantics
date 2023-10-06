@@ -1,9 +1,9 @@
 import os
 import json
-import pickle
+import glob
 import pandas as pd
 import re
-import traceback
+import datetime
 
 
 class Dataset:
@@ -12,10 +12,11 @@ class Dataset:
 
         self.sa_dataset_path = None
         self.path = None
-        self.dataset_name = None
+        self.split_by_categories = None
+        self.custom_category_list = None
 
-        self.instance_header_list = ['id', 'category', 'subcategory', 'color', 'image_id', 'version']
-        self.image_header_list = ['id', 'video_name', 'participant', 'dt', 'frame', 'height', 'width', 'num_instances']
+        self.instance_header_list = ['participant', 'video', 'frame', 'dt', 'instance_id', 'category', 'subcategory',
+                                     'color', 'last_modified']
 
         self.category_df = None
         self.subcategory_df = None
@@ -42,57 +43,59 @@ class Dataset:
         self.num_images = 0
         self.num_instances = 0
 
-    def add_sa_dataset(self, dataset_name, sa_dataset_path):
-        self.dataset_name = dataset_name
-        self.sa_dataset_path = sa_dataset_path
-
-        image_list = []
+    def add_sa_dataset(self, path):
+        self.path = path
+        category_set = set()
         instance_list = []
 
-        for subdirectory in os.listdir(sa_dataset_path):
-            if subdirectory[0] != ".":
+        for participant in os.listdir(self.path + "/images"):
+            if participant[0] != ".":
 
-                info = subdirectory.split("_")
-                video_name = info[0]
-                participant = info[1]
-                dt = info[2] + "_" + info[3] + "_" + info[4] + "_" + info[5]
-                subdirectory_path = sa_dataset_path + "/" + subdirectory
+                for video_name in os.listdir(self.path + "/images/" + participant):
+                    if video_name[0] != ".":
 
-                file_list = os.listdir(subdirectory_path)
+                        for file_name in os.listdir(self.path + "/images/" + participant + "/" + video_name):
 
-                for file_name in file_list:
-                    if file_name[-4:] == '.jpg':
+                            if file_name[-4:] == '.jpg':
 
-                        image_name = file_name[:-4]
-                        frame = image_name.split('_')[-1]
-                        sa_json_path = subdirectory_path + "/" + image_name + ".jpg.json"
+                                image_name = file_name[:-4]
+                                image_info = image_name.split('_')
+                                dt = "_".join(image_info[1:5])
 
-                        with open(sa_json_path, 'r') as f:
-                            sa_json_data = json.load(f)
-                            height = sa_json_data['metadata']['height']
-                            width = sa_json_data['metadata']['width']
+                                frame = int(image_name.split('_')[-1])
+                                sa_json_path = self.path + "/images/" + participant + "/" + video_name + "/" + file_name + ".json"
 
-                            num_instances_in_image = 0
-                            for instance in sa_json_data['instances']:
-                                instance_data = [self.num_instances,
-                                                 instance["className"],
-                                                 "None",
-                                                 instance["parts"][0]["color"],
-                                                 self.num_images,
-                                                 0]
-                                instance_list.append(instance_data)
-                                self.num_instances += 1
-                                num_instances_in_image += 1
+                                with open(sa_json_path, 'r') as f:
+                                    sa_json_data = json.load(f)
 
-                            image_data = [self.num_images, video_name, participant, dt, frame, height, width, num_instances_in_image]
-                            image_list.append(image_data)
-
-                        self.num_images += 1
+                                    for instance in sa_json_data['instances']:
+                                        color = instance["parts"][0]["color"]
+                                        category = self.sanitize_category_names(instance["className"])
+                                        category_set.add(category)
+                                        instance_data = [participant,
+                                                         int(video_name),
+                                                         frame,
+                                                         dt,
+                                                         self.num_instances,
+                                                         category,
+                                                         "None",
+                                                         color,
+                                                         datetime.datetime.now().replace(microsecond=0)]
+                                        instance_list.append(instance_data)
+                                        self.num_instances += 1
 
         self.instance_df = pd.DataFrame(data=instance_list, columns=self.instance_header_list)
-        self.image_df = pd.DataFrame(data=image_list, columns=self.image_header_list)
+        self.instance_df = self.instance_df.sort_values(by=['participant', 'video', 'frame', 'instance_id'])
 
+        self.generate_image_df()
         self.generate_category_df()
+        self.generate_subcategory_df()
+
+        print(category_set)
+
+    def generate_image_df(self):
+        self.image_df = self.instance_df.groupby(['participant', 'video', 'frame']).size().reset_index(name='count')
+        self.num_images = self.image_df.shape[0]
 
     def generate_category_df(self):
         self.category_df = self.instance_df.groupby('category').agg(
@@ -130,41 +133,79 @@ class Dataset:
             subset=['subcategory', 'category']).reset_index(drop=True)
         self.subcategory_df['count'] = self.subcategory_df['count'].astype(int)
 
-    def load_dataset(self, path, dataset_name):
-        with open(path+dataset_name, 'rb') as f:
-            loaded_obj = pickle.load(f)
-            self.__dict__.update(loaded_obj.__dict__)
+        self.num_subcategories = self.subcategory_df.shape[0]
+
+    def load_dataset(self, path):
+
         self.path = path
-        self.dataset_name = dataset_name[:-4]
+        # Path to the directory with the CSV files
+        all_files = glob.glob(path + "/csv/*.csv")
+
+        # List to hold individual DataFrames
+        df_list = []
+
+        # Define the data types for specific columns
+        dtypes = {
+            'participant': str,
+            'video': int,
+            'frame': int,
+            'dt': str,
+            'instance_id': int,
+            'category': str,
+            'subcategory': str,
+            'color': str
+        }
+
+        # Loop through all the CSV files and read them into DataFrames
+        for filename in all_files:
+            df = pd.read_csv(filename, dtype=dtypes, parse_dates=['last_modified'])
+            df_list.append(df)
+
+        # Concatenate all the individual DataFrames into a single DataFrame
+        self.instance_df = pd.concat(df_list, axis=0, ignore_index=True)
+
+        self.num_instances = self.instance_df.shape[0]
+
+        self.generate_image_df()
         self.generate_category_df()
         self.generate_subcategory_df()
 
-    def save_dataset(self, path=None, split_by_category=False):
-        if path is None:
-            path = self.path
+        print(self.instance_df)
+        print(self.image_df)
+        print(self.category_df)
+        print(self.subcategory_df)
+
+    def save_dataset(self, split_by_category=False, specified_category_list=None):
+        print(self.instance_df)
+        print(self.image_df)
+        print(self.category_df)
+        print(self.subcategory_df)
+
+        if specified_category_list:
+            self.custom_category_list = specified_category_list
+            instance_df = self.instance_df[self.instance_df['category'].isin(specified_category_list)]
+        else:
+            instance_df = self.instance_df
 
         if split_by_category:
-            full_instance_df = self.instance_df.copy()
-            unique_categories = self.instance_df['category'].unique().tolist()
-            dataset_name = self.dataset_name
-            for category in unique_categories:
-                self.instance_df = full_instance_df[full_instance_df['category'] == category]
-                self.generate_category_df()
-                self.generate_subcategory_df()
+            self.split_by_categories = True
+            for category in instance_df['category'].unique():
+                # Filter the DataFrame for the current category
+                filtered_df = instance_df[instance_df['category'] == category]
 
-                cleaned_category_name = re.sub(r'[\\/*?:"<> |]', '-', category)
-                self.dataset_name = dataset_name + "_" + cleaned_category_name
-                with open(path + self.dataset_name + ".pkl", 'wb') as f:
-                    pickle.dump(self, f)
-            self.instance_df = full_instance_df
-            self.generate_category_df()
-            self.generate_subcategory_df()
-            self.dataset_name = dataset_name
-
+                # Save the filtered DataFrame to a CSV file
+                filtered_df.to_csv(self.path + "/csv/" + category + ".csv", index=False)
         else:
-            print(self.path, self.dataset_name)
-            with open(self.path + self.dataset_name + ".pkl", 'wb') as f:
-                pickle.dump(self, f)
+            self.split_by_categories = False
+            instance_df.to_csv(self.path + "/csv/" + 'all.csv', index=False)
+
+    @staticmethod
+    def sanitize_category_names(category_name):
+        """Sanitize the filename by replacing invalid characters with underscores."""
+        s = re.sub(r'[()<>:"/\\|?* ]', '_', category_name)
+        s = re.sub(r'_{2,}', '_', s)
+        s = s.strip("_")
+        return s
 
     def add_subcategory(self, category, subcategory_name):
         entry_exists = any((self.subcategory_df['category'] == category) & (self.subcategory_df['subcategory'] == subcategory_name))
