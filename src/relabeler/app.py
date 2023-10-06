@@ -2,6 +2,7 @@ import tkinter as tk
 import math
 import copy
 import numpy as np
+import datetime
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from ImageSemantics.src.relabeler import config
@@ -378,8 +379,8 @@ class RelabelerApp:
         return subcategory_list
 
     def get_video_list(self):
-        unique_df = self.dataset.image_df.drop_duplicates(subset=['participant', 'video_name'])
-        sorted_video_tuple_list = sorted(list(zip(unique_df['participant'], unique_df['video_name'])))
+        unique_df = self.dataset.image_df.drop_duplicates(subset=['participant', 'video'])
+        sorted_video_tuple_list = sorted(list(zip(unique_df['participant'], unique_df['video'])))
         string_list = [f"{tup[0]}-{tup[1]}" for tup in sorted_video_tuple_list]
         string_list = ["ALL"] + string_list
         return string_list
@@ -487,11 +488,11 @@ class RelabelerApp:
         else:
             video_info = self.current_video.split("-")
             participant = video_info[0]
-            video_name = video_info[1]
+            video = video_info[1]
             filtered_df = self.dataset.instance_df[(self.dataset.instance_df['category'] == self.preview_category) & (
                     self.dataset.instance_df['subcategory'] == self.preview_subcategory) & (
                     self.dataset.instance_df['participant'] == participant) & (
-                    self.dataset.instance_df['video_name'] == int(video_name))]
+                    self.dataset.instance_df['video'] == int(video))]
 
         instance_list = filtered_df.values.tolist()
 
@@ -535,8 +536,6 @@ class RelabelerApp:
 
                 instance_data_list = instance_list[self.preview_index]
 
-                instance_data_list += self.get_image_data(instance_data_list[:3])
-
                 self.preview_image_list.append(instance_data_list)
 
                 raw_image_path = self.get_image_path(instance_data_list)
@@ -556,24 +555,13 @@ class RelabelerApp:
             tk.messagebox.showinfo(message="There are no images in {}:{} to show.".format(self.preview_category,
                                                                                           self.preview_subcategory))
 
-    def get_image_data(self, image_info_list):
-
-        dt = self.dataset.image_df[
-            (self.dataset.image_df['participant'] == image_info_list[0]) &
-            (self.dataset.image_df['video_name'] == image_info_list[1]) &
-            (self.dataset.image_df['frame'] == image_info_list[2])
-            ]['dt'].iloc[0]
-
-        return [dt]
-
     def get_image_path(self, instance_data_list):
-        # ../superannotate_datasets/DTW2/video-7was5_DTW_2022_01_03_1640/DTW_2022_01_03_1640_013300.jpg
-        video_name = str(instance_data_list[1])
         participant = instance_data_list[0]
-        dt = instance_data_list[-1]
+        video = str(instance_data_list[1])
         frame = str(instance_data_list[2]).zfill(6)
+        dt = instance_data_list[3]
 
-        path = self.dataset.sa_dataset_path + "/" + video_name + "/"
+        path = self.dataset.path + "/images/" + participant + "/" + video + "/"
         filename = path + participant + "_" + dt + "_" + frame
 
         return filename
@@ -602,7 +590,7 @@ class RelabelerApp:
     def get_recolored_target_instance_image(self, raw_image_matrix, current_instance, label_counter):
         unique_image_matrix = self.get_image_matrix(current_instance, "unique")
         target_image_matrix = copy.deepcopy(raw_image_matrix)
-        current_instance_hex_rgb = current_instance[6]
+        current_instance_hex_rgb = current_instance[7]
         r, g, b = [int(current_instance_hex_rgb[i:i + 2], 16) for i in (1, 3, 5)]
 
         target_color = np.array([r, g, b])
@@ -661,18 +649,21 @@ class RelabelerApp:
         messagebox.showinfo(message="This feature is not yet implemented")
 
     def change_image_subcategory(self, instance):
-        index = instance[3]
-        old_subcategory = instance[5]
+        print(instance)
+        index = instance[4]
+        old_subcategory = instance[6]
 
         if old_subcategory != self.relabel_subcategory:
             self.dataset.instance_df.loc[self.dataset.instance_df['instance_id'] == index, 'subcategory'] = self.relabel_subcategory
+            self.dataset.instace_df.loc[self.dataset.instance_df['instance_id'] == index, 'last_modified'] = datetime.datetime.now().replace(microsecond=0)
+
+
             self.unsaved_changes_made = True
             self.dataset.generate_subcategory_df()
         else:
             messagebox.showerror(message="Can't change subcategory because already in subcategory")
 
     def relabel_images(self):
-
         self.relabel_category = self.relabel_category_var.get()
         self.relabel_subcategory = self.relabel_subcategory_var.get()
 
@@ -698,7 +689,7 @@ class RelabelerApp:
         print()
 
     def save(self):
-        self.dataset.save_dataset()
+        self.dataset.save_dataset(split_by_category=True)
         self.unsaved_changes_made = False
         messagebox.showinfo(message="You have saved your changes")
 
