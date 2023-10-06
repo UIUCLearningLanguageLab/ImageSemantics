@@ -6,11 +6,12 @@ from src.dataset import datasets
 
 
 def main():
-    sa_dataset_path = "../superannotate_datasets/DTW"
-    output_dataset_path = "data/DTW1"
+    split = True
+    categories = None
+    path = "../data"
     the_dataset = datasets.Dataset()
-    the_dataset.load_sa_dataset(sa_dataset_path)
-    the_dataset.save_dataset(output_dataset_path)
+    the_dataset.add_sa_dataset(path)
+    the_dataset.save_dataset(split_by_category=split, specified_category_list=categories)
 
 
 main()
