@@ -624,7 +624,7 @@ class RelabelerApp:
 
                 self.show_image(resized_raw_image, self.top_image_label)
                 self.show_image(target_image, self.bottom_image_label)
-                image_name = f"{current_instance[0]}_{current_instance[1]}_{current_instance[2]}_{current_instance[3]}"
+                image_name = f"{current_instance[0]}_{current_instance[1]}_{current_instance[2]}_{current_instance[4]}"
                 self.image_name_label.configure(text=image_name)
 
                 self.root.update()
