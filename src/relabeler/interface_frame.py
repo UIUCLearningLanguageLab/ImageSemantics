@@ -227,16 +227,11 @@ class InterfaceFrame:
         self.app.relabel_subcategory_var.set(selection)
         print("Relabel subcategory changed to {}".format(self.app.relabel_subcategory))
 
-    def set_change_subcategory_category(self, selection):
-        self.app.add_remove_subcategory_category = selection
-        self.app.add_remove_subcategory_category_var.set(selection)
-        print("Current change subcategory category changed to {}".format(self.app.add_remove_subcategory_category))
-
     def add_subcategory(self):
         illegal_subcategory_list = ["", None]
         new_subcategory = self.add_remove_subcategory_entry.get()
 
-        if new_subcategory in self.app.dataset.get_subcategory_list(self.app.add_remove_subcategory_category):
+        if new_subcategory in self.app.dataset.get_subcategory_list(self.app.current_category):
             tk.messagebox.showerror(f"Not adding subcategory {new_subcategory} because already in subcategory list")
 
         elif new_subcategory in illegal_subcategory_list:
