@@ -4,6 +4,7 @@ import glob
 import pandas as pd
 import re
 import datetime
+import csv
 
 
 class Dataset:
@@ -16,7 +17,7 @@ class Dataset:
         self.custom_category_list = None
 
         self.instance_header_list = ['participant', 'video', 'frame', 'dt', 'instance_id', 'category', 'subcategory',
-                                     'color', 'last_modified']
+                                     'color_list', 'last_modified']
 
         self.category_df = None
         self.subcategory_df = None
@@ -27,6 +28,8 @@ class Dataset:
         self.num_subcategories = None
         self.num_images = None
         self.num_instances = None
+
+        self.instance_comment_dict = None
 
         self.init_dataset()
 
@@ -42,6 +45,7 @@ class Dataset:
         self.num_subcategories = 0
         self.num_images = 0
         self.num_instances = 0
+        self.instance_comment_dict = {}
 
     def add_sa_dataset(self, path):
         self.path = path
@@ -69,7 +73,10 @@ class Dataset:
                                     sa_json_data = json.load(f)
 
                                     for instance in sa_json_data['instances']:
-                                        color = instance["parts"][0]["color"]
+                                        color_list = []
+                                        for part in instance["parts"]:
+                                            color_list.append(part["color"])
+
                                         category = self.sanitize_category_names(instance["className"])
                                         category_set.add(category)
                                         instance_data = [participant,
@@ -79,7 +86,7 @@ class Dataset:
                                                          self.num_instances,
                                                          category,
                                                          "None",
-                                                         color,
+                                                         color_list,
                                                          datetime.datetime.now().replace(microsecond=0)]
                                         instance_list.append(instance_data)
                                         self.num_instances += 1
@@ -91,6 +98,10 @@ class Dataset:
         self.generate_category_df()
         self.generate_subcategory_df()
 
+        self.instance_comment_dict = {}
+        category_list = self.get_category_list()
+        for category in category_list:
+            self.instance_comment_dict[category] = []
         print(category_set)
 
     def generate_image_df(self):
@@ -100,10 +111,9 @@ class Dataset:
     def generate_category_df(self):
         self.category_df = self.instance_df.groupby('category').agg(
             category=('category', 'first'),
-            color=('color', 'first'),
             count=('category', 'size')
         ).reset_index(drop=True)
-        self.category_df = self.category_df[['category', 'color', 'count']]
+        self.category_df = self.category_df[['category', 'count']]
         self.num_categories = self.category_df.shape[0]
 
     def generate_subcategory_df(self):
@@ -136,15 +146,19 @@ class Dataset:
         self.num_subcategories = self.subcategory_df.shape[0]
 
     def load_dataset(self, path):
-
         self.path = path
-        # Path to the directory with the CSV files
-        all_files = glob.glob(path + "/csv/*.csv")
 
-        # List to hold individual DataFrames
-        df_list = []
+        path += "/instance_data"
 
-        # Define the data types for specific columns
+        json_files = glob.glob(f"{path}/*.json")
+
+        # Read each JSON file into a DataFrame and store in a list
+        dfs = [pd.read_json(file, lines=True, dtype={'dt': str}) for file in json_files]
+
+        # Concatenate all DataFrames in the list into a single DataFrame
+        self.instance_df = pd.concat(dfs, ignore_index=True)
+
+        # Convert columns to desired data types
         dtypes = {
             'participant': str,
             'video': int,
@@ -153,51 +167,74 @@ class Dataset:
             'instance_id': int,
             'category': str,
             'subcategory': str,
-            'color': str
+            'color_list': 'object',  # Lists are stored as objects in pandas
+            'last_modified': 'datetime64[ms]'  # Convert Unix timestamp in milliseconds to datetime
         }
 
-        # Loop through all the CSV files and read them into DataFrames
-        for filename in all_files:
-            df = pd.read_csv(filename, dtype=dtypes, parse_dates=['last_modified'])
-            df_list.append(df)
-
-        # Concatenate all the individual DataFrames into a single DataFrame
-        self.instance_df = pd.concat(df_list, axis=0, ignore_index=True)
+        for column, dtype in dtypes.items():
+            self.instance_df[column] = self.instance_df[column].astype(dtype)
 
         self.num_instances = self.instance_df.shape[0]
+
+        csv_files = glob.glob(f"{path}/*.csv")
+        print(csv_files)
+
+        # Dictionary to store the filename and the corresponding data
+        for file in csv_files:
+            with open(file, 'r') as f:
+                reader = csv.reader(f)
+                data = list(reader)
+
+                # Store the filename (without the path and extension) as the key and the data as the value
+                filename = os.path.splitext(os.path.basename(file))[0]
+                category = filename[:-9]
+                self.instance_comment_dict[category] = data
+                print(filename, category, data)
+
+        # Now, csv_data contains the filename as the key and the data from the CSV file as a list of lists
+        print(self.instance_comment_dict)
 
         self.generate_image_df()
         self.generate_category_df()
         self.generate_subcategory_df()
+        #
+        # print(self.instance_df)
+        # print(self.image_df)
+        # print(self.category_df)
+        # print(self.subcategory_df)
 
-        print(self.instance_df)
-        print(self.image_df)
-        print(self.category_df)
-        print(self.subcategory_df)
+    def save_dataset(self, split_by_category=False):
 
-    def save_dataset(self, split_by_category=False, specified_category_list=None):
-        print(self.instance_df)
-        print(self.image_df)
-        print(self.category_df)
-        print(self.subcategory_df)
-
-        if specified_category_list:
-            self.custom_category_list = specified_category_list
-            instance_df = self.instance_df[self.instance_df['category'].isin(specified_category_list)]
-        else:
-            instance_df = self.instance_df
+        # print(self.instance_df['last_modified'])
+        self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         if split_by_category:
-            self.split_by_categories = True
-            for category in instance_df['category'].unique():
+            for category in self.instance_df['category'].unique():
                 # Filter the DataFrame for the current category
-                filtered_df = instance_df[instance_df['category'] == category]
+                filtered_df = self.instance_df[self.instance_df['category'] == category].copy()
 
-                # Save the filtered DataFrame to a CSV file
-                filtered_df.to_csv(self.path + "/csv/" + category + ".csv", index=False)
+                # print(self.instance_comment_dict)
+                # # Add the lists of lists from instance_comment_dict if the category exists in it
+                # if category in self.instance_comment_dict:
+                #     filtered_df['comments'] = self.instance_comment_dict[category]
+
+                path = self.path + "/instance_data/" + category + ".json"
+                filtered_df.to_json(path, orient='records', lines=True)
+
+                if category in self.instance_comment_dict:
+                    category_comment_list = self.instance_comment_dict[category]
+                    comment_path = self.path + "/instance_data/" + category + "_comments.csv"
+
+                    with open(comment_path, "w", newline='') as csv_file:
+                        writer = csv.writer(csv_file)
+                        for row in category_comment_list:
+                            # Remove commas from each string in the row
+                            cleaned_row = [str(field).replace(",", "") for field in row]
+                            writer.writerow(cleaned_row)
+
         else:
-            self.split_by_categories = False
-            instance_df.to_csv(self.path + "/csv/" + 'all.csv', index=False)
+            path = self.path + "/instance_data/" + 'all.json'
+            self.instance_df.to_json(path, orient='records', lines=True)
 
     @staticmethod
     def sanitize_category_names(category_name):
@@ -218,10 +255,55 @@ class Dataset:
         if not filtered_rows.empty:
             self.subcategory_df.drop(filtered_rows.index, inplace=True)
 
-    def get_category_list(self):
+    def get_category_list(self, sort_list=True):
+
         category_list = self.category_df['category'].unique().tolist()
+
+        if sort_list:
+            category_list.sort()
         return category_list
 
-    def get_subcategory_list(self, category):
+    def get_subcategory_list(self, category, sort_list=True, none_start=True):
         subcategory_list = self.subcategory_df[self.subcategory_df['category'] == category]['subcategory'].unique().tolist()
+
+        if sort_list:
+            subcategory_list.sort()
+
+        if none_start:
+            if "None" in subcategory_list:
+                subcategory_list.remove("None")
+                subcategory_list.insert(0, "None")
+
         return subcategory_list
+
+    def get_video_list(self, sort_list=True, add_all=True):
+        unique_df = self.image_df.drop_duplicates(subset=['participant', 'video'])
+        video_tuple_list = list(zip(unique_df['participant'], unique_df['video']))
+
+        if sort_list:
+            video_tuple_list.sort()
+
+        string_list = [f"{tup[0]}-{tup[1]}" for tup in video_tuple_list]
+
+        if add_all:
+            string_list = ["ALL"] + string_list
+
+        return string_list
+
+    def get_image_path(self, instance_data_list):
+        participant = instance_data_list[0]
+        video = str(instance_data_list[1])
+        frame = str(instance_data_list[2]).zfill(6)
+        dt = instance_data_list[3]
+
+        path = self.path + "/images/" + participant + "/" + video + "/"
+        filename = path + participant + "_" + dt + "_" + frame
+
+        return filename
+
+    def print_subcategory_string(self):
+        result = self.subcategory_df.apply(lambda row: f"{row['category']} {row['subcategory']} {row['count']}", axis=1).tolist()
+        print()
+        for thing in result:
+            print(thing)
+        print()

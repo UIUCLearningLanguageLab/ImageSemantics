@@ -7,11 +7,10 @@ from src.dataset import datasets
 
 def main():
     split = True
-    categories = None
     path = "../data"
     the_dataset = datasets.Dataset()
     the_dataset.add_sa_dataset(path)
-    the_dataset.save_dataset(split_by_category=split, specified_category_list=categories)
+    the_dataset.save_dataset(split_by_category=split)
 
 
 main()
