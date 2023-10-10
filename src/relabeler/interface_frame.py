@@ -44,7 +44,7 @@ class InterfaceFrame:
                                       current_selection,
                                       *choice_list,
                                       command=result)
-        option_widget.config(width=option_width)
+        option_widget.config(width=option_width, borderwidth=0, highlightthickness=0, relief='flat')
         option_widget.place(x=x, y=y)
         return option_widget
 
