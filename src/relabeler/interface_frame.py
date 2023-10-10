@@ -247,7 +247,7 @@ class InterfaceFrame:
 
         else:
             print("Adding subcategory", new_subcategory)
-            self.app.dataset.add_subcategory(self.app.add_remove_subcategory_category, new_subcategory)
+            self.app.dataset.add_subcategory(self.app.current_category, new_subcategory)
             self.refresh_subcategory_options()
             print(self.app.dataset.subcategory_df)
 
@@ -261,12 +261,12 @@ class InterfaceFrame:
                 filtered_rows = self.app.dataset.subcategory_df[
                     (self.app.dataset.subcategory_df['subcategory'] == subcategory) & (
                                 self.app.dataset.subcategory_df[
-                                    'category'] == self.app.add_remove_subcategory_category)]
+                                    'category'] == self.app.current_category)]
                 if filtered_rows.empty:
                     tk.messagebox.showerror("ERROR", "Cannot remove because it doesn't exist in that category")
                 else:
                     if filtered_rows.iloc[0]['count'] == 0:
-                        self.app.dataset.remove_subcategory(self.app.add_remove_subcategory_category, subcategory)
+                        self.app.dataset.remove_subcategory(self.app.current_category, subcategory)
                         self.refresh_subcategory_options()
                     else:
                         tk.messagebox.showerror("ERROR", "Cannot remove subcategory with assigned instances")

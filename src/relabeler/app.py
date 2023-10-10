@@ -41,9 +41,6 @@ class RelabelerApp:
         self.relabel_subcategory = None
         self.relabel_subcategory_var = None
 
-        self.add_remove_subcategory_category = None
-        self.add_remove_subcategory_category_var = None
-
         self.dataset.print_subcategory_string()
         self.init_app()
         self.create_main_window()
