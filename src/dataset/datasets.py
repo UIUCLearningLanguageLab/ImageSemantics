@@ -168,7 +168,7 @@ class Dataset:
             'category': str,
             'subcategory': str,
             'color_list': 'object',  # Lists are stored as objects in pandas
-            'last_modified': 'datetime64[ms]'  # Convert Unix timestamp in milliseconds to datetime
+            'last_modified': str  # Convert Unix timestamp in milliseconds to datetime
         }
 
         for column, dtype in dtypes.items():
@@ -197,7 +197,7 @@ class Dataset:
 
     def save_dataset(self, split_by_category=False):
 
-        self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         if split_by_category:
             for category in self.instance_df['category'].unique():

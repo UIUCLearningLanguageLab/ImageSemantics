@@ -188,9 +188,9 @@ class InterfaceFrame:
         if old_subcategory != self.app.relabel_subcategory:
             self.app.dataset.instance_df.loc[
                 self.app.dataset.instance_df['instance_id'] == index, 'subcategory'] = self.app.relabel_subcategory
-            self.app.dataset.instance_df.loc[
-                self.app.dataset.instance_df[
-                    'instance_id'] == index, 'last_modified'] = datetime.datetime.now().replace(microsecond=0)
+            # self.app.dataset.instance_df.loc[
+            #     self.app.dataset.instance_df[
+            #         'instance_id'] == index, 'last_modified'] = datetime.datetime.now().replace(microsecond=0)
 
             self.app.unsaved_changes_made = True
             self.app.dataset.generate_subcategory_df()
