@@ -70,7 +70,7 @@ class InstanceWindow:
 
     def create_interface(self):
         # OptionMenu for error type
-        comment_type_label = tk.Label(self.comment_window, text="Comment Type", bg="grey20", fg="white")
+        comment_type_label = tk.Label(self.comment_window, text="Comment Type", bg="black", fg="white")
         comment_type_label.place(x=320, y=self.image_display_dimensions[1] + 20)
         self.comment_type_var = tk.StringVar()
         option_list = ["Subcategory Question/Comment", "Segment Error", "Category Error", "Other"]
@@ -79,7 +79,7 @@ class InstanceWindow:
         self.comment_type_option_menu.config(width=50)
         self.comment_type_option_menu.place(x=420, y=self.image_display_dimensions[1] + 20)
 
-        name_label = tk.Label(self.comment_window, text="Name", bg="grey20", fg="white")
+        name_label = tk.Label(self.comment_window, text="Name", bg="black", fg="white")
         name_label.place(x=10, y=self.image_display_dimensions[1] + 20)
         self.name_entry = tk.Entry(self.comment_window, bg="white", fg="black")
         self.name_entry.place(x=50, y=self.image_display_dimensions[1] + 20)
@@ -89,7 +89,8 @@ class InstanceWindow:
         self.comment_text_widget.place(x=10, y=self.image_display_dimensions[1] + 60)
 
         # # Submit button
-        self.submit_btn = tk.Button(self.comment_window, text="Submit", command=self.add_instance_comment)
+        self.submit_btn = tk.Button(self.comment_window, text="Submit", command=self.add_instance_comment,
+                                    borderwidth=0, highlightthickness=0, relief='flat')
         self.submit_btn.place(x=950, y=self.image_display_dimensions[1] + 20)
         self.comment_window.bind("<Return>", lambda event=None: self.add_instance_comment())
 
