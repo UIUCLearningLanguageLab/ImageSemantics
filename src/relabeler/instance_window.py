@@ -104,7 +104,6 @@ class InstanceWindow:
 
         self.app.dataset.instance_comment_dict[category].append(new_comment)
         self.app.unsaved_changes_made = True
-        print(self.app.dataset.instance_comment_dict)
         self.close_window()
 
     def close_window(self):

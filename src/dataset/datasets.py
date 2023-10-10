@@ -177,7 +177,6 @@ class Dataset:
         self.num_instances = self.instance_df.shape[0]
 
         csv_files = glob.glob(f"{path}/*.csv")
-        print(csv_files)
 
         # Dictionary to store the filename and the corresponding data
         for file in csv_files:
@@ -189,34 +188,21 @@ class Dataset:
                 filename = os.path.splitext(os.path.basename(file))[0]
                 category = filename[:-9]
                 self.instance_comment_dict[category] = data
-                print(filename, category, data)
 
         # Now, csv_data contains the filename as the key and the data from the CSV file as a list of lists
-        print(self.instance_comment_dict)
 
         self.generate_image_df()
         self.generate_category_df()
         self.generate_subcategory_df()
-        #
-        # print(self.instance_df)
-        # print(self.image_df)
-        # print(self.category_df)
-        # print(self.subcategory_df)
 
     def save_dataset(self, split_by_category=False):
 
-        # print(self.instance_df['last_modified'])
         self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         if split_by_category:
             for category in self.instance_df['category'].unique():
                 # Filter the DataFrame for the current category
                 filtered_df = self.instance_df[self.instance_df['category'] == category].copy()
-
-                # print(self.instance_comment_dict)
-                # # Add the lists of lists from instance_comment_dict if the category exists in it
-                # if category in self.instance_comment_dict:
-                #     filtered_df['comments'] = self.instance_comment_dict[category]
 
                 path = self.path + "/instance_data/" + category + ".json"
                 filtered_df.to_json(path, orient='records', lines=True)
