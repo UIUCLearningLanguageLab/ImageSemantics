@@ -78,6 +78,13 @@ class FullImageFrame:
                                                                           self.image_display_dimensions)
         recolored_tk_image = current_instance_image.create_tk_image(recolored_resized_pil_image)
 
+        p = current_instance_image.participant
+        v = current_instance_image.video
+        f = current_instance_image.frame
+        i = current_instance_image.instance_id
+        image_name = f"{p}-{v}-{f}-{i}"
+        self.image_name_label.configure(text=image_name)
+
         self.top_image_label.configure(image=big_raw_tk_image)
         self.top_image_label.image = big_raw_tk_image
 
