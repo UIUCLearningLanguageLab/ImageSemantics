@@ -68,10 +68,6 @@ class RelabelerApp:
         self.relabel_subcategory_var = tk.StringVar()
         self.relabel_subcategory_var.set(self.relabel_subcategory)
 
-        self.add_remove_subcategory_category = self.category_list[0]
-        self.add_remove_subcategory_category_var = tk.StringVar()
-        self.add_remove_subcategory_category_var.set(self.category_list[0])
-
     def create_main_window(self):
         self.root.configure(background='black')
         self.root.geometry("{}x{}".format(config.Config.main_window_dimensions[0],

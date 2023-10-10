@@ -102,7 +102,6 @@ class Dataset:
         category_list = self.get_category_list()
         for category in category_list:
             self.instance_comment_dict[category] = []
-        print(category_set)
 
     def generate_image_df(self):
         self.image_df = self.instance_df.groupby(['participant', 'video', 'frame']).size().reset_index(name='count')

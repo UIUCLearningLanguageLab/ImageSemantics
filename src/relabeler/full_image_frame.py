@@ -23,7 +23,7 @@ class FullImageFrame:
     def create_full_image_frame(self):
         full_image_dimensions = config.Config.image_dimensions
         non_image_height = config.Config.interface_frame_height + 10
-        image_display_height = int((full_image_dimensions[1] - non_image_height)/2)
+        image_display_height = int((config.Config.main_window_dimensions[1] - non_image_height)/2)
         image_display_ratio = image_display_height / full_image_dimensions[1]
         image_display_width = int(full_image_dimensions[0]*image_display_ratio)
         self.image_display_dimensions = (image_display_width, image_display_height)
@@ -35,7 +35,7 @@ class FullImageFrame:
                                          bg="black")
 
     def create_full_image_labels(self):
-        image_start_y = 0
+        image_start_y = 30
         image_start_x = 10
 
         self.image_name_label = tk.Label(self.full_image_frame, text="", bg="black", fg="white", font="Helvetica 20")
