@@ -136,7 +136,7 @@ class InterfaceFrame:
                                                      self.app.image_preview_frame.show_previews,
                                                      10,
                                                      460,
-                                                     20)
+                                                     25)
 
         self.relabel_subcategory_title = self.create_label(self.interface_frame,
                                                            "Relabel Subcategory",
@@ -150,7 +150,7 @@ class InterfaceFrame:
                                                              self.relabel_images,
                                                              10,
                                                              860,
-                                                             20)
+                                                             25)
 
         self.add_remove_subcategory_title = self.create_label(self.interface_frame,
                                                               "+/- Subcategory",
@@ -163,21 +163,21 @@ class InterfaceFrame:
                                                      width=20,
                                                      bg="white",
                                                      fg="black")
-        self.add_remove_subcategory_entry.place(x=1010, y=25)
+        self.add_remove_subcategory_entry.place(x=1010, y=23)
 
         self.add_subcategory_button = self.create_button(self.interface_frame,
                                                          "Add Subcategory",
                                                          self.add_subcategory,
                                                          10,
                                                          1210,
-                                                         22)
+                                                         25)
 
         self.remove_subcategory_button = self.create_button(self.interface_frame,
                                                             "Remove Subcategory",
                                                             self.remove_subcategory,
                                                             12,
                                                             1340,
-                                                            22)
+                                                            25)
 
         self.refresh_subcategory_options()
 
