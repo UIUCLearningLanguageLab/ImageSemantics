@@ -53,7 +53,10 @@ class InterfaceFrame:
         new_button = tk.Button(parent,
                                text=text,
                                command=command,
-                               width=width)
+                               width=width,
+                               borderwidth=0,
+                               highlightthickness=0,
+                               relief='flat')
         new_button.place(x=x, y=y)
         return new_button
 
