@@ -33,6 +33,7 @@ class InstanceWindow:
         # Create a new Toplevel window
         self.comment_window = tk.Toplevel(self.app.root)  # Assuming self.root is your main window
         self.comment_window.title("Add Instance Comment")
+        self.comment_window.configure(bg="black")
         h = self.image_display_dimensions[1] + 200
         dimensions = f"{self.image_display_dimensions[0]}x{h}+100+100"
         self.comment_window.geometry(dimensions)
