@@ -6,7 +6,7 @@ from src.dataset import datasets
 
 
 def main():
-    split = True
+    split = False
     path = "../data"
     the_dataset = datasets.Dataset()
     the_dataset.add_sa_dataset(path)

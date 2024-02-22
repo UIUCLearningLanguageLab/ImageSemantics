@@ -8,39 +8,53 @@ from src.models import matrices
 from src.figures import figures
 
 
-
 def main():
-    np.set_printoptions(precision=3, suppress=True)
-    pickle_path = '../data/DTW1_2023_03_16_154635.pkl'
 
+
+    np.set_printoptions(precision=3, suppress=True)
+    json_path = '../data/'
     the_dataset = datasets.Dataset()
-    the_dataset.load_dataset(pickle_path)
+    the_dataset.load_dataset(json_path)
+
+    the_dataset.filter_dataset()
 
     category_by_image_matrix = matrices.CategoryByImageMatrix(the_dataset,
                                                               use_categories=True,
                                                               use_subcategories=False,
-                                                              num_split_categories=2)
-    # figures.create_heatmap(category_by_image_matrix.matrix,
-    #                        category_by_image_matrix.row_label_list,
-    #                        category_by_image_matrix.column_label_list)
+                                                              num_split_categories=4)
+    figures.create_heatmap(category_by_image_matrix.matrix,
+                           category_by_image_matrix.row_label_list,
+                           category_by_image_matrix.column_label_list,
+                           "../analyses/iyer/",
+                           "raw_matrix_heatmap.png")
 
     category_by_image_matrix.normalize_matrix("ppmi")
-    # figures.create_heatmap(category_by_image_matrix.matrix,
-    #                        category_by_image_matrix.row_label_list,
-    #                        category_by_image_matrix.column_label_list)
+    figures.create_heatmap(category_by_image_matrix.matrix,
+                           category_by_image_matrix.row_label_list,
+                           category_by_image_matrix.column_label_list,
+                           "../analyses/iyer/",
+                           "ppmi_matrix_heatmap.png"
+                           )
 
     category_by_image_matrix.svd_matrix(12)
-    # figures.create_heatmap(category_by_image_matrix.matrix,
-    #                        category_by_image_matrix.row_label_list,
-    #                        category_by_image_matrix.column_label_list)
+    figures.create_heatmap(category_by_image_matrix.matrix,
+                           category_by_image_matrix.row_label_list,
+                           category_by_image_matrix.column_label_list,
+                           "../analyses/iyer/",
+                           "svd_matrix_heatmap.png",
+                           col_cluster=True)
 
     category_by_image_matrix.compute_similarity_matrix("correlation")
     figures.create_heatmap(category_by_image_matrix.sim_matrix,
                            category_by_image_matrix.row_label_list,
-                           category_by_image_matrix.row_label_list)
+                           category_by_image_matrix.row_label_list,
+                           "../analyses/iyer/",
+                           "sim_matrix_heatmap.png",
+                           col_cluster=True
+                           )
 
-    #print(category_by_image_matrix.row_label_list)
-    #categorization.mpl_classifier()
+    print(category_by_image_matrix.row_label_list)
+    categorization.mpl_classifier()
 
 
 if __name__ == "__main__":

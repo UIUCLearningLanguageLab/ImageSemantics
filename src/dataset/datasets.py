@@ -47,6 +47,56 @@ class Dataset:
         self.num_instances = 0
         self.instance_comment_dict = {}
 
+    def filter_dataset(self, bounding_box=False, infant_touching=False, big_object=False):
+
+        if bounding_box is True:
+            # for each unique image in self.image_df
+            #   instance_keep_set = []
+            #   get image_file_path from combination of fields in self.image_df plus the project directory path
+            #   image_pil_file = load_image_pil_file(image_file_path)
+            #   image_matrix = convert_to_numpy_matrix(image_pil_file)
+            #   image_height = image_matrix.shape[0]
+            #   image_width = image_matrix.shape[1]
+            #   critical_region_min_x = int(round(image_width * .25))
+            #   critical_region_max_x = int(round(image_width * .75))
+            #   critical_region_min_y = int(round(image_height * .25))
+            #   critical_region_max_y = int(round(image_height * .75))
+            #   for x in image_width:
+            #       for y in image_height:
+            #           if critical_region_min_x <= x <= critical_region_max_x:
+            #               if critical_region_min_y <= y <= critical_region_max_y:
+            #                   pixel_rgb_color = image_matrix[x, y, :]
+            #                   pixel_hex_color = "#" + convert_to_hex_color(pixel_rgb_color)
+            #                   instance_keep_set.add(pixel_hex_color)
+            #   remove rows from self.instance_df that match that image and do NOT have a value in their color_list that are in the instance_keep_set
+            pass
+        if infant_touching is True:
+            # for each unique image in self.image_df
+            #   if that image contains "self" as an instance
+            #       touching_self_instance_list = []
+            #       get the hex color of "self" from self.instance_df for that image
+            #       load the image as a matrix the way you did above
+            #       make self_pixels, a list tuples of all the pixels that contain the self rgb color, e.g. [(12, 2), (12, 3), (12, 4), (13, 2), (13, 3)]
+            #       for pixel in self_pixels:
+            #           adjacent_pixel_list = [(pixel[0], pixel[1]-1), (pixel[0], pixel[1]+1), (pixel[0]-1, pixel[1]), (pixel[0]+1, pixel[1])]
+            #           remove all values from adjacent_pixel_list that contain a negative value or a value greater than image_height-1 or image_width-1
+            #           (adjacent pixels that arent really in the image)
+            #           for adjacent_pixel in adjacent_pixel_list:
+            #               get hex color of adjacent pixel
+            #               if hex color is not color of self, add it to touching_self_instance_list
+            #   remove rows from self.instance_df that match that image and do NOT have a value in their color_list that are in touching_self_instance_list
+            pass
+        if big_object is True:
+            # for each unique image in self.image_df
+            #   make a dictionary called instance_color_dict, with each instance's unique id number as the key,
+            #   and a list of the hex colors corresponding to that instance as the values. some instances have more than one color!
+            #   make a second dictionary called instance_size_dict with each instance's unique id number as the key, and 0 as the value.
+            #   load that image as a matrix
+            #   loop through the pixels of the image. for each pixel:
+            #       get its hex color, and use the hex color to get that instance's unique_id number
+            #       increment the value of instance_size_dict[unique_id] += 1
+            pass
+
     def add_sa_dataset(self, path):
         self.path = path
         category_set = set()
@@ -150,7 +200,7 @@ class Dataset:
         path += "/instance_data"
 
         json_files = glob.glob(f"{path}/*.json")
-
+        print(json_files)
         # Read each JSON file into a DataFrame and store in a list
         dfs = [pd.read_json(file, lines=True, dtype={'dt': str}) for file in json_files]
 
@@ -197,7 +247,6 @@ class Dataset:
     def save_dataset(self, split_by_category=False):
 
         # self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
-
         if split_by_category:
             for category in self.instance_df['category'].unique():
                 # Filter the DataFrame for the current category

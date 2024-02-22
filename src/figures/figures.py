@@ -3,17 +3,19 @@ import seaborn as sns
 import pandas as pd
 
 
-def create_heatmap(matrix, row_labels, column_labels, path, name):
+def create_heatmap(matrix, row_labels, column_labels, output_path, output_file_name, col_cluster=False):
 
-    figure_height = 16
-    figure_width = 16
+    figure_height = 40
+    figure_width = 20
+
     df = pd.DataFrame(data=matrix, index=row_labels, columns=column_labels)
 
     g = sns.clustermap(df, cmap='coolwarm', standard_scale=None, metric='euclidean',
                        method='single', figsize=(figure_width, figure_height), cbar_pos=None, dendrogram_ratio=(.01, .01),
-                       row_cluster=True, col_cluster=True)
+                       row_cluster=True, col_cluster=col_cluster)
+    plt.setp(g.ax_heatmap.get_yticklabels(), fontsize=8)
 
-    plt.savefig(path + name + '_heatmap_dendogram.png')
+    plt.savefig(output_path + output_file_name + '_heatmap_dendogram.png', dpi=300, bbox_inches='tight')
     plt.clf()
 
 
