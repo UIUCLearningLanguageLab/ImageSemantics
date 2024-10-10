@@ -1,6 +1,5 @@
 import numpy as np
 import copy
-import random
 
 
 class EmbeddingMatrix:
@@ -57,6 +56,9 @@ class EmbeddingMatrix:
     def svd_matrix(self, d, weighted=False):
         print("Reducing Method Using SVD to {} Dimensions".format(d))
         u, s, v = np.linalg.svd(self.matrix, full_matrices=False)
+        # if matrix starts as 120x6000, 120 is num_subcategories, 4 * num_categories, 6000 is num_images
+        # s = 120 [12312, 12310, , , , 321, 21, 21, ] = 100000, [.21, .20, .... , .0001]
+        # u = 120x120
         if not weighted:
             self.matrix = u[:, :d]
         else:
@@ -71,32 +73,16 @@ class EmbeddingMatrix:
 
 class CategoryByImageMatrix(EmbeddingMatrix):
 
-    def __init__(self, dataset, use_categories=True, use_subcategories=False, num_split_categories=0):
+    def __init__(self, dataset, use_categories=False):
         super().__init__(dataset)
         self.use_categories = use_categories
-        self.use_subcategories = use_subcategories
-        self.num_split_categories = num_split_categories
 
         self.create_matrix()
 
     def create_matrix(self):
 
         if self.use_categories:
-            if self.num_split_categories > 0:
-                self.dataset.instance_df[
-                    'subcategory'] = self.dataset.instance_df[
-                    'category'].apply(lambda x: f"{x}{random.randint(1, self.num_split_categories)}")
-
-            else:
-                self.dataset.instance_df['subcategory'] = self.dataset.instance_df['category']
-
-        else:
-            if self.use_subcategories:
-                # check to make sure the subcategories are values other than None
-                has_non_none_value_string = (self.dataset.instance_df['subcategory'] != "None").any()
-
-                if not has_non_none_value_string:
-                    raise Exception("ERROR: all subcategories are set to None")
+            self.dataset.instance_df['subcategory'] = self.dataset.instance_df['category']
 
         self.dataset.instance_df['pvf'] = self.dataset.instance_df['participant'].astype(str) + "_" + self.dataset.instance_df['video'].astype(str) + "_" + \
                              self.dataset.instance_df['frame'].astype(str)
@@ -117,4 +103,7 @@ class CategoryByImageMatrix(EmbeddingMatrix):
 
         self.row_label_list = pivot_df.index.tolist()
         self.column_label_list = pivot_df.columns.tolist()
+        self.row_index_dict = {}
+        for i in range(len(self.row_label_list)):
+            self.row_index_dict[self.row_label_list[i]] = i
 

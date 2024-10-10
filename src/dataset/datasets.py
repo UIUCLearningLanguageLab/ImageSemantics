@@ -1,10 +1,16 @@
 import os
 import json
+import random
 import glob
 import pandas as pd
 import re
 import datetime
 import csv
+import time
+from PIL import Image
+import numpy as np
+import copy
+import heapq
 
 
 class Dataset:
@@ -23,6 +29,7 @@ class Dataset:
         self.subcategory_df = None
         self.image_df = None
         self.instance_df = None
+        self.filtered_instance_df = None
 
         self.num_categories = None
         self.num_subcategories = None
@@ -34,10 +41,10 @@ class Dataset:
         self.init_dataset()
 
     def __repr__(self):
-        output_string = "Num_Categories: {}/{} Num_Images: {} Num Instances:{}\n".format(self.num_categories,
-                                                                                         self.num_subcategories,
-                                                                                         self.num_images,
-                                                                                         self.num_instances)
+        output_string = "Num_Categories: {}/{} Num_Images: {} Num Instances:{}".format(self.num_categories,
+                                                                                       self.num_subcategories,
+                                                                                       self.num_images,
+                                                                                       self.num_instances)
         return output_string
 
     def init_dataset(self):
@@ -46,63 +53,166 @@ class Dataset:
         self.num_images = 0
         self.num_instances = 0
         self.instance_comment_dict = {}
+        self.filtered_instance_df = pd.DataFrame(data=[], columns=self.instance_header_list)
 
-    def filter_dataset(self, bounding_box=False, infant_touching=False, big_object=False):
+    @staticmethod
+    def load_image_matrix(path):
+        image_pil_file = Image.open(path).convert("RGB")
+        image_matrix = np.asarray(copy.deepcopy(image_pil_file))
+        return image_matrix
 
+    def get_unique_colors_set(self, image_matrix,
+                              critical_region_min_x,
+                              critical_region_max_x,
+                              critical_region_min_y,
+                              critical_region_max_y):
+
+        critical_region = image_matrix[
+                          critical_region_min_y:critical_region_max_y, critical_region_min_x:critical_region_max_x]
+
+        # Reshape the critical region to a 2D array where each row represents a pixel
+        reshaped_region = critical_region.reshape(-1, critical_region.shape[2])
+
+        # Convert RGB values to hexadecimal format using vectorized operations
+        hex_colors = np.apply_along_axis(lambda x: '#{:02x}{:02x}{:02x}'.format(*x), 1, reshaped_region)
+
+        # Convert to a set to get unique colors
+        unique_colors_set = set(hex_colors)
+
+        return unique_colors_set
+
+    def get_filtered_instance_df(self, image_instance_df, unique_colors_set):
+
+        # Assuming df is your DataFrame and unique_colors_set is your set of unique hex color values
+        # Define a function that checks if any color in the color_list is in unique_colors_set
+        def color_in_set(color_list):
+            return any(color in unique_colors_set for color in color_list)
+
+        # Apply this function to the 'color_list' column to create a boolean mask
+        mask = image_instance_df['color_list'].apply(color_in_set)
+
+        # Use the mask to filter the DataFrame
+        filtered_image_instance_df = image_instance_df[mask]
+        return filtered_image_instance_df
+
+    def get_image_instance_df(self, image_row):
+        participant, video, frame, dt, _, _ = image_row
+        matched_rows = self.instance_df[
+            (self.instance_df['participant'] == participant) &
+            (self.instance_df['video'] == video) &
+            (self.instance_df['frame'] == frame) &
+            (self.instance_df['dt'] == dt)
+            ]
+        return matched_rows
+
+    def filter_dataset_by_bounding_box(self):
+        num_images = len(self.image_df)
+        my_counter = 0
+        filtered_df_list = []
+
+        for row in self.image_df.itertuples(index=False):
+            start_time = time.time()
+            if my_counter >= num_images:
+                break
+
+            # load an image as a matrix
+            path = row.image_path
+            image_path = path + "___save.png"
+            image_matrix = self.load_image_matrix(image_path)
+
+            # set a critical region
+            image_size = image_matrix.shape
+            image_width = image_size[1]
+            image_height = image_size[0]
+            critical_region_min_x = int(round(image_width * .25))
+            critical_region_max_x = int(round(image_width * .75))
+            critical_region_min_y = int(round(image_height * .25))
+            critical_region_max_y = int(round(image_height * .75))
+
+            # get the unique colors in that image
+            unique_colors_set = self.get_unique_colors_set(image_matrix,
+                                                           critical_region_min_x,
+                                                           critical_region_max_x,
+                                                           critical_region_min_y,
+                                                           critical_region_max_y)
+
+            image_instance_df = self.get_image_instance_df(row)
+            filtered_image_instance_df = self.get_filtered_instance_df(image_instance_df, unique_colors_set)
+            filtered_df_list.append(filtered_image_instance_df)
+
+            my_counter += 1
+            took = time.time() - start_time
+            if my_counter % 1 == 0:
+                print(f"Finished {my_counter}/{len(self.image_df)} images ({took:0.2f})")
+
+        self.instance_df = pd.concat(filtered_df_list, ignore_index=True)
+
+        self.generate_image_df()
+        self.generate_category_df()
+        self.generate_subcategory_df()
+
+    def filter_by_size(self, n):
+        def rgb_to_hex(rgb):
+            return '#' + ''.join(['{:02x}'.format(x) for x in rgb])
+
+        for my_image in self.image_df.itertuples(index=True):
+            path = my_image.image_path
+            savedPath = path + "___save.png"
+            image_pil_file = Image.open(savedPath).convert("RGB")
+            image_matrix = np.asarray(copy.deepcopy(image_pil_file))
+
+            # Reshape the matrix to a 2D array where each row is an RGB value
+            pixels = image_matrix.reshape(-1, 3)
+
+            # Convert each pixel to its hex representation
+            hex_colors = [rgb_to_hex(pixel) for pixel in pixels]
+
+            # Count the occurrences of each hex color
+            color_counts = {}
+            for color in hex_colors:
+                if color in color_counts:
+                    color_counts[color] += 1
+                else:
+                    color_counts[color] = 1
+
+            biggest_instance_color = max(color_counts, key=color_counts.get)
+            image_size = image_matrix.shape[0]*image_matrix.shape[1]
+            biggest_percentage = color_counts[biggest_instance_color]/image_size
+            print(path, biggest_instance_color, f"{biggest_percentage:0.3f}")
+            image_instance_df = self.get_image_instance_df(my_image)
+            largest_keys = heapq.nlargest(n, color_counts, key=color_counts.get)
+
+    def filter_dataset_by_subject_touching(self):
+        # for each unique image in self.image_df
+        #   if that image contains "self" as an instance
+        #       touching_self_instance_list = []
+        #       get the hex color of "self" from self.instance_df for that image
+        #       load the image as a matrix the way you did above
+        #       make self_pixels, a list tuples of all the pixels that contain the self rgb color, e.g. [(12, 2), (12, 3), (12, 4), (13, 2), (13, 3)]
+        #       for pixel in self_pixels:
+        #           adjacent_pixel_list = [(pixel[0], pixel[1]-1), (pixel[0], pixel[1]+1), (pixel[0]-1, pixel[1]), (pixel[0]+1, pixel[1])]
+        #           remove all values from adjacent_pixel_list that contain a negative value or a value greater than image_height-1 or image_width-1
+        #           (adjacent pixels that arent really in the image)
+        #           for adjacent_pixel in adjacent_pixel_list:
+        #               get hex color of adjacent pixel
+        #               if hex color is not color of self, add it to touching_self_instance_list
+        #   remove rows from self.instance_df that match that image and do NOT have a value in their color_list that are in touching_self_instance_list
+        pass
+
+    def filter_dataset(self, bounding_box=False, infant_touching=False, big_object=False, num_images=0):
         if bounding_box is True:
-            # for each unique image in self.image_df
-            #   instance_keep_set = []
-            #   get image_file_path from combination of fields in self.image_df plus the project directory path
-            #   image_pil_file = load_image_pil_file(image_file_path)
-            #   image_matrix = convert_to_numpy_matrix(image_pil_file)
-            #   image_height = image_matrix.shape[0]
-            #   image_width = image_matrix.shape[1]
-            #   critical_region_min_x = int(round(image_width * .25))
-            #   critical_region_max_x = int(round(image_width * .75))
-            #   critical_region_min_y = int(round(image_height * .25))
-            #   critical_region_max_y = int(round(image_height * .75))
-            #   for x in image_width:
-            #       for y in image_height:
-            #           if critical_region_min_x <= x <= critical_region_max_x:
-            #               if critical_region_min_y <= y <= critical_region_max_y:
-            #                   pixel_rgb_color = image_matrix[x, y, :]
-            #                   pixel_hex_color = "#" + convert_to_hex_color(pixel_rgb_color)
-            #                   instance_keep_set.add(pixel_hex_color)
-            #   remove rows from self.instance_df that match that image and do NOT have a value in their color_list that are in the instance_keep_set
-            pass
+            self.filter_dataset_by_bounding_box()
         if infant_touching is True:
-            # for each unique image in self.image_df
-            #   if that image contains "self" as an instance
-            #       touching_self_instance_list = []
-            #       get the hex color of "self" from self.instance_df for that image
-            #       load the image as a matrix the way you did above
-            #       make self_pixels, a list tuples of all the pixels that contain the self rgb color, e.g. [(12, 2), (12, 3), (12, 4), (13, 2), (13, 3)]
-            #       for pixel in self_pixels:
-            #           adjacent_pixel_list = [(pixel[0], pixel[1]-1), (pixel[0], pixel[1]+1), (pixel[0]-1, pixel[1]), (pixel[0]+1, pixel[1])]
-            #           remove all values from adjacent_pixel_list that contain a negative value or a value greater than image_height-1 or image_width-1
-            #           (adjacent pixels that arent really in the image)
-            #           for adjacent_pixel in adjacent_pixel_list:
-            #               get hex color of adjacent pixel
-            #               if hex color is not color of self, add it to touching_self_instance_list
-            #   remove rows from self.instance_df that match that image and do NOT have a value in their color_list that are in touching_self_instance_list
-            pass
+            self.filter_dataset_by_subject_touching()
         if big_object is True:
-            # for each unique image in self.image_df
-            #   make a dictionary called instance_color_dict, with each instance's unique id number as the key,
-            #   and a list of the hex colors corresponding to that instance as the values. some instances have more than one color!
-            #   make a second dictionary called instance_size_dict with each instance's unique id number as the key, and 0 as the value.
-            #   load that image as a matrix
-            #   loop through the pixels of the image. for each pixel:
-            #       get its hex color, and use the hex color to get that instance's unique_id number
-            #       increment the value of instance_size_dict[unique_id] += 1
-            pass
+            self.filter_by_size()
 
     def add_sa_dataset(self, path):
         self.path = path
         category_set = set()
         instance_list = []
 
-        for participant in os.listdir(self.path + "/images"):
+        for participant in os.listdir(self.path + "/images/"):
             if participant[0] != ".":
 
                 for video_name in os.listdir(self.path + "/images/" + participant):
@@ -154,7 +264,11 @@ class Dataset:
             self.instance_comment_dict[category] = []
 
     def generate_image_df(self):
-        self.image_df = self.instance_df.groupby(['participant', 'video', 'frame']).size().reset_index(name='count')
+        self.image_df = self.instance_df.groupby(['participant', 'video', 'frame', 'dt']).size().reset_index(name='num_instances')
+        self.image_df['image_path'] = self.image_df.apply(
+    lambda
+        row: f"{self.path}/images/{row['participant']}/{row['video']}/{row['participant']}_{row['dt']}_{str(row['frame']).zfill(6)}.jpg",
+    axis=1)
         self.num_images = self.image_df.shape[0]
 
     def generate_category_df(self):
@@ -196,14 +310,9 @@ class Dataset:
 
     def load_dataset(self, path):
         self.path = path
-
-        path += "/instance_data"
-
         json_files = glob.glob(f"{path}/*.json")
-        print(json_files)
-        # Read each JSON file into a DataFrame and store in a list
-        dfs = [pd.read_json(file, lines=True, dtype={'dt': str}) for file in json_files]
 
+        dfs = [pd.read_json(file, lines=True, dtype={'dt': str}) for file in json_files]
         # Concatenate all DataFrames in the list into a single DataFrame
         self.instance_df = pd.concat(dfs, ignore_index=True)
 
@@ -243,8 +352,9 @@ class Dataset:
         self.generate_image_df()
         self.generate_category_df()
         self.generate_subcategory_df()
+        print(f"Loaded dataset with {self}")
 
-    def save_dataset(self, split_by_category=False):
+    def save_dataset(self, split_by_category=False, file_name=None):
 
         # self.instance_df['last_modified'] = self.instance_df['last_modified'].dt.strftime('%Y-%m-%d %H:%M:%S')
         if split_by_category:
@@ -253,6 +363,10 @@ class Dataset:
                 filtered_df = self.instance_df[self.instance_df['category'] == category].copy()
 
                 path = self.path + "/instance_data/" + category + ".json"
+                if file_name is None:
+                    path = f"{self.path}/instance_data/{category}.json"
+                else:
+                    path = f"{self.path}/instance_data/{file_name}_{category}.json"
                 filtered_df.to_json(path, orient='records', lines=True)
 
                 if category in self.instance_comment_dict:
@@ -267,7 +381,10 @@ class Dataset:
                             writer.writerow(cleaned_row)
 
         else:
-            path = self.path + "/instance_data/" + 'all.json'
+            if file_name is None:
+                path = self.path + "/instance_data/" + 'all.json'
+            else:
+                path = f"{self.path}/instance_data/{file_name}_all.json"
             self.instance_df.to_json(path, orient='records', lines=True)
 
     @staticmethod
@@ -341,3 +458,13 @@ class Dataset:
         for thing in result:
             print(thing)
         print()
+
+    def split_categories(self, num_split_categories):
+        self.instance_df['subcategory'] = self.instance_df[
+            'category'].apply(lambda x: f"{x}{random.randint(1, num_split_categories)}")
+        self.generate_image_df()
+        self.generate_category_df()
+        self.generate_subcategory_df()
+
+    def remove_subcategory_none_rows(self):
+        self.subcategory_df = self.subcategory_df[self.subcategory_df['subcategory'] != 'None']
