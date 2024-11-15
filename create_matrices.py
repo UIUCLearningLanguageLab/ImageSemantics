@@ -14,8 +14,8 @@ from src.tasks import categories, cohyponyms2
 def main():
 
     np.set_printoptions(precision=3, suppress=True)
-    dataset_name_list = ['Original', "BoundingBox"]
-    dataset_path_list = ['../data', '../data/bounding_box_filtered/']
+    dataset_name_list = ['Original']
+    dataset_path_list = ['../data']
     # dataset_name_list = ['Original']
     # dataset_path_list = ['../data']
     output_path = "../analyses/"
@@ -76,14 +76,14 @@ def main():
         the_cohyponym_task = cohyponyms2.Cohyponyms(the_categories, similarity_metric=similarity_metric, num_thresholds=num_thresholds)
         cohyponym_task_df_list.append(the_cohyponym_task)
 
-        # print(the_cohyponym_task.item_results_df)
-        # print(the_cohyponym_task.threshold_result_df)
-        # print(the_cohyponym_task.best_item_results_df)
-        # print(the_cohyponym_task.best_category_results_df)
-        # print(the_cohyponym_task.balanced_accuracy_mean)
+        print(the_cohyponym_task.item_results_df)
+        print(the_cohyponym_task.threshold_result_df)
+        print(the_cohyponym_task.best_item_results_df)
+        print(the_cohyponym_task.best_category_results_df)
+        print(the_cohyponym_task.balanced_accuracy_mean)
 
-    analyses.generate_category_frequency_bar_graphs(category_df_list, dataset_name_list)
-    analyses.generate_ba_bar_graphs(cohyponym_task_df_list, dataset_name_list)
+    # analyses.generate_category_frequency_bar_graphs(category_df_list, dataset_name_list)
+    # analyses.generate_ba_bar_graphs(cohyponym_task_df_list, dataset_name_list)
 
 
 if __name__ == "__main__":
