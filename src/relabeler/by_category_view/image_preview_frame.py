@@ -2,7 +2,7 @@ from ImageSemantics.src.relabeler import config
 import tkinter as tk
 from tkinter import messagebox
 from ImageSemantics.src.relabeler import image_object
-from ImageSemantics.src.relabeler import instance_window
+from ImageSemantics.src.relabeler.by_category_view import instance_window
 
 
 class ImagePreviewFrame:
@@ -14,6 +14,7 @@ class ImagePreviewFrame:
 
         self.image_preview_frame = None
         self.max_image_labels = None
+        self.header_label = None
 
         self.preview_label_list = None
         self.preview_position_list = None
@@ -27,6 +28,7 @@ class ImagePreviewFrame:
         self.old_preview_index = None
 
         self.create_image_preview_frame()
+        self.create_header_label()
         self.create_preview_image_labels()
 
     def create_image_preview_frame(self):
@@ -41,15 +43,27 @@ class ImagePreviewFrame:
 
         self.max_image_labels = config.Config.num_image_previews[0] * config.Config.num_image_previews[1]
 
+
+    def get_header_string(self):
+        num_instances = self.get_preview_instance_count()
+        header_string = f"{self.preview_category}-{self.preview_subcategory}-{self.app.current_video}: {num_instances}"
+        return header_string
+
+    def create_header_label(self):
+        header_string = self.get_header_string()
+        self.header_label = tk.Label(self.image_preview_frame, text=header_string, bg="black", fg="white",
+                                     font=("TkDefaultFont", 16))
+        self.header_label.place(x=10, y=5)
+
     def create_preview_image_labels(self):
 
         image_start_x = 15
-        image_start_y = 10
+        image_start_y = 30
         image_spacing = 9
         frame_border_size = 3
 
-        original_size = (1920, 1080)
-        s = 0.10
+        original_size = config.Config.full_image_dimensions
+        s = config.Config.image_preview_size
 
         self.image_preview_dimensions = (int(original_size[0]*s), int(original_size[1]*s))
 
@@ -86,6 +100,23 @@ class ImagePreviewFrame:
             x += self.image_preview_dimensions[0] + image_spacing
         return x
 
+    def get_preview_instance_count(self):
+        if self.app.current_video == "ALL":
+            filtered_df = self.app.dataset.instance_df[
+                (self.app.dataset.instance_df['category'] == self.preview_category) & (
+                        self.app.dataset.instance_df['subcategory'] == self.preview_subcategory)]
+        else:
+            video_info = self.app.current_video.split("-")
+            participant = video_info[0]
+            video = video_info[1]
+            filtered_df = self.app.dataset.instance_df[
+                (self.app.dataset.instance_df['category'] == self.preview_category) & (
+                        self.app.dataset.instance_df['subcategory'] == self.preview_subcategory) & (
+                        self.app.dataset.instance_df['participant'] == participant) & (
+                        self.app.dataset.instance_df['video'] == int(video))]
+
+        return len(filtered_df)
+
     def get_preview_instance_list(self):
         if self.app.current_video == "ALL":
             filtered_df = self.app.dataset.instance_df[
@@ -105,7 +136,16 @@ class ImagePreviewFrame:
 
         return instance_list
 
-    def show_previews(self, increment_index=True):
+    def update_preview_frame(self, increment_index=True):
+        self.show_previews(increment_index)
+        self.update_header()
+
+    def update_header(self):
+        header_string = self.get_header_string()
+        print(f"Update header: {header_string}")
+        self.header_label.config(text=header_string)
+
+    def show_previews(self, increment_index):
 
         self.preview_image_list = []
         self.current_selections_list = []

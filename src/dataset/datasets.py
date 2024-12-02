@@ -310,7 +310,7 @@ class Dataset:
 
     def load_dataset(self, path):
         self.path = path
-        json_files = glob.glob(f"{path}/*.json")
+        json_files = glob.glob(f"{path}/instance_data/*.json")
 
         dfs = [pd.read_json(file, lines=True, dtype={'dt': str}) for file in json_files]
         # Concatenate all DataFrames in the list into a single DataFrame
@@ -362,7 +362,6 @@ class Dataset:
                 # Filter the DataFrame for the current category
                 filtered_df = self.instance_df[self.instance_df['category'] == category].copy()
 
-                path = self.path + "/instance_data/" + category + ".json"
                 if file_name is None:
                     path = f"{self.path}/instance_data/{category}.json"
                 else:
@@ -453,11 +452,20 @@ class Dataset:
         return filename
 
     def print_subcategory_string(self):
-        result = self.subcategory_df.apply(lambda row: f"{row['category']} {row['subcategory']} {row['count']}", axis=1).tolist()
+        result = (
+            self.subcategory_df.sort_values(by=['category', 'subcategory'])
+            .apply(lambda row: f"{row['category']},{row['subcategory']},{row['count']}", axis=1)
+            .tolist()
+        )
         print()
         for thing in result:
             print(thing)
         print()
+
+        f = open(self.path + "/subcategories.csv", "w")
+        for thing in result:
+            f.write(f"{thing}\n")
+        f.close()
 
     def split_categories(self, num_split_categories):
         self.instance_df['subcategory'] = self.instance_df[

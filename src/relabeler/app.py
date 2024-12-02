@@ -1,9 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from ImageSemantics.src.relabeler import config
-from ImageSemantics.src.relabeler import interface_frame
-from ImageSemantics.src.relabeler import image_preview_frame
-from ImageSemantics.src.relabeler import full_image_frame
+from ImageSemantics.src.relabeler.by_category_view import full_image_frame, interface_frame, image_preview_frame
 
 
 class RelabelerApp:
@@ -15,58 +13,26 @@ class RelabelerApp:
         # main window variables
         self.root = tk.Tk()
 
+        self.interface_frame = None
+        self.button_size = 20
+        self.frame_x_padding = 10
+
+        self.main_frame = None
+        self.main_frame_dimensions = (config.Config.main_window_dimensions[0],
+                                      config.Config.main_window_dimensions[1]-config.Config.interface_frame_height)
+
         # menu variables
         self.main_menu = None
         self.file_menu = None
 
-        self.interface_frame = None
-        self.image_frame = None
-        self.image_preview_frame = None
-        self.full_image_frame = None
-        self.instance_window = None
-
-        self.category_list = None
-
-        self.current_category = None
-        self.current_category_var = None
-        self.current_subcategory_list = None
-        self.current_subcategory = None
-        self.current_subcategory_var = None
-
-        self.video_list = None
-        self.current_video = None
-        self.current_video_var = None
-
-        self.relabel_subcategory_list = None
-        self.relabel_subcategory = None
-        self.relabel_subcategory_var = None
-
-        self.dataset.print_subcategory_string()
-        self.init_app()
-        self.create_main_window()
         self.create_menu()
+        self.create_main_window()
+        self.create_interface_frame()
+        self.create_main_frame()
 
-    def init_app(self):
-        self.category_list = self.dataset.get_category_list()
-
-        self.current_category = self.category_list[0]
-        self.current_category_var = tk.StringVar()
-        self.current_category_var.set(self.current_category)
-
-        self.current_subcategory_list = self.dataset.get_subcategory_list(self.current_category)
-        self.current_subcategory = self.current_subcategory_list[0]
-        self.current_subcategory_var = tk.StringVar()
-        self.current_subcategory_var.set(self.current_subcategory)
-
-        self.video_list = self.dataset.get_video_list()
-        self.current_video = self.video_list[0]
-        self.current_video_var = tk.StringVar()
-        self.current_video_var.set(self.video_list[0])
-
-        self.relabel_subcategory_list = self.dataset.get_subcategory_list(self.current_category)
-        self.relabel_subcategory = self.relabel_subcategory_list[0]
-        self.relabel_subcategory_var = tk.StringVar()
-        self.relabel_subcategory_var.set(self.relabel_subcategory)
+    def create_interface_frame(self):
+        self.interface_frame = tk.Frame(self.root, width=self.button_size+self.frame_x_padding, bg="gray")
+        self.interface_frame.pack(side=tk.LEFT, fill=tk.Y)
 
     def create_main_window(self):
         self.root.configure(background='black')
@@ -75,20 +41,14 @@ class RelabelerApp:
         self.root.title("Image Relabeler")
         self.root.protocol("WM_DELETE_WINDOW", self.quit)
 
-        self.image_frame = tk.Frame(self.root,
-                                    width=config.Config.main_window_dimensions[0],
-                                    height=config.Config.main_window_dimensions[1]-config.Config.interface_frame_height,
-                                    bg="black")
+    def create_main_frame(self):
 
-        self.full_image_frame = full_image_frame.FullImageFrame(self)
-        self.image_preview_frame = image_preview_frame.ImagePreviewFrame(self)
-
-        self.interface_frame = interface_frame.InterfaceFrame(self)
-
-        self.interface_frame.interface_frame.pack(side=tk.TOP)
-        self.image_frame.pack(side=tk.TOP)
-        self.image_preview_frame.image_preview_frame.pack(side=tk.LEFT)
-        self.full_image_frame.full_image_frame.pack(side=tk.LEFT)
+        self.main_frame = tk.Frame(self.root,
+                                   width=self.main_frame_dimensions[0],
+                                   height=self.main_frame_dimensions[1],
+                                   bg="blue",
+                                   bd=5, relief=tk.RIDGE)
+        self.main_frame.pack(side=tk.LEFT)
 
     def create_menu(self):
         self.main_menu = tk.Menu(self.root)
@@ -102,6 +62,9 @@ class RelabelerApp:
 
         self.root.bind("<Command-s>", self.save)
         self.root.bind("<Command-q>", self.quit)
+
+        self.root.bind("<Control-s>", self.save)
+        self.root.bind("<Control-q>", self.quit)
 
     def save(self):
         self.dataset.save_dataset(split_by_category=True)

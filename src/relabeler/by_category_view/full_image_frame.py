@@ -21,13 +21,21 @@ class FullImageFrame:
         self.create_full_image_labels()
 
     def create_full_image_frame(self):
-        full_image_dimensions = config.Config.image_dimensions
-        non_image_height = config.Config.interface_frame_height + 10
+        full_image_dimensions = config.Config.full_image_dimensions
+        non_image_height = config.Config.interface_frame_height + 50
+        non_image_width = 50
+
         image_display_height = int((config.Config.main_window_dimensions[1] - non_image_height)/2)
+
+
         image_display_ratio = image_display_height / full_image_dimensions[1]
         image_display_width = int(full_image_dimensions[0]*image_display_ratio)
+
+
         self.image_display_dimensions = (image_display_width, image_display_height)
-        self.dimensions = (image_display_width+20, image_display_height*2+non_image_height)
+        print(self.image_display_dimensions)
+
+        self.dimensions = (image_display_width+non_image_width, image_display_height*2+non_image_height)
 
         self.full_image_frame = tk.Frame(self.app.image_frame,
                                          width=self.dimensions[0],

@@ -7,7 +7,7 @@ from src.relabeler import app
 
 
 def main():
-    path = '../data/'
+    path = '../data'
 
     the_dataset = datasets.Dataset()
     the_dataset.load_dataset(path)
