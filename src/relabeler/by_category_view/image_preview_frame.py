@@ -1,4 +1,3 @@
-from ImageSemantics.src.relabeler import config
 import tkinter as tk
 from tkinter import messagebox
 from ImageSemantics.src.relabeler import image_object
@@ -7,8 +6,9 @@ from ImageSemantics.src.relabeler.by_category_view import instance_window
 
 class ImagePreviewFrame:
 
-    def __init__(self, app):
+    def __init__(self, app, category_frame):
         self.app = app
+        self.category_frame = category_frame
         self.dimensions = None
         self.image_preview_dimensions = None
 
@@ -32,14 +32,14 @@ class ImagePreviewFrame:
         self.create_preview_image_labels()
 
     def create_image_preview_frame(self):
-        height = config.Config.main_window_dimensions[1] - config.Config.interface_frame_height
-        width = config.Config.main_window_dimensions[0] - self.app.full_image_frame.dimensions[0]
-        self.dimensions = (width, height)
+        self.dimensions = (config.Config.main_window_dimensions[0] - self.app.full_image_frame.dimensions[0],
+                           self.app.main_window_dimensions[1] - self.category_frame.interface_height)
 
         self.image_preview_frame = tk.Frame(self.app.image_frame,
                                             width=width,
                                             height=height,
                                             bg="black")
+        self.image_preview_frame.pack(side=tk.LEFT)
 
         self.max_image_labels = config.Config.num_image_previews[0] * config.Config.num_image_previews[1]
 

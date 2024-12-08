@@ -1,7 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
-from ImageSemantics.src.relabeler import config
-from ImageSemantics.src.relabeler.by_category_view import full_image_frame, interface_frame, image_preview_frame
+from .config import Config
+from .by_category_view import by_category_view
+from .dataframe_view import dataframe_view
+from .frame_view import frame_view
+from .video_view import video_view
 
 
 class RelabelerApp:
@@ -14,12 +17,17 @@ class RelabelerApp:
         self.root = tk.Tk()
 
         self.interface_frame = None
-        self.button_size = 20
+        self.button_dimensions = (4, 2)
         self.frame_x_padding = 10
+        self.interface_frame_width = self.button_dimensions[0] + self.frame_x_padding
+
 
         self.main_frame = None
-        self.main_frame_dimensions = (config.Config.main_window_dimensions[0],
-                                      config.Config.main_window_dimensions[1]-config.Config.interface_frame_height)
+        self.main_frame_dimensions = (Config.main_window_dimensions[0],
+                                      Config.main_window_dimensions[1]-self.interface_frame_width)
+
+        self.content_frame_dict = None
+        self.current_content_frame = None
 
         # menu variables
         self.main_menu = None
@@ -29,26 +37,56 @@ class RelabelerApp:
         self.create_main_window()
         self.create_interface_frame()
         self.create_main_frame()
+        self.create_content_frames()
+        self.create_interface_buttons()
+
+        self.show_content_frame("F")
 
     def create_interface_frame(self):
-        self.interface_frame = tk.Frame(self.root, width=self.button_size+self.frame_x_padding, bg="gray")
+        self.interface_frame = tk.Frame(self.root, width=self.interface_frame_width, bg="gray")
         self.interface_frame.pack(side=tk.LEFT, fill=tk.Y)
 
     def create_main_window(self):
         self.root.configure(background='black')
-        self.root.geometry("{}x{}".format(config.Config.main_window_dimensions[0],
-                                          config.Config.main_window_dimensions[1]))
-        self.root.title("Image Relabeler")
+        self.root.geometry("{}x{}".format(Config.main_window_dimensions[0],
+                                          Config.main_window_dimensions[1]))
+        self.root.title("Image Annotator")
         self.root.protocol("WM_DELETE_WINDOW", self.quit)
 
     def create_main_frame(self):
+        self.main_frame = tk.Frame(self.root, bg="black", bd=5, relief=tk.RIDGE)
+        self.main_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
-        self.main_frame = tk.Frame(self.root,
-                                   width=self.main_frame_dimensions[0],
-                                   height=self.main_frame_dimensions[1],
-                                   bg="blue",
-                                   bd=5, relief=tk.RIDGE)
-        self.main_frame.pack(side=tk.LEFT)
+
+    def create_content_frames(self):
+        self.content_frame_dict = {"F": frame_view.FrameView(self),
+                                   "C": by_category_view.ByCategoryView(self),
+                                   "V": video_view.VideoView(self),
+                                   "D": dataframe_view.DataFrameView(self)}
+
+    def create_interface_buttons(self):
+        for key, value in self.content_frame_dict.items():
+            label_button = tk.Label(
+                self.interface_frame,
+                text=key,
+                bg=value.color,
+                fg="black",
+                height=self.button_dimensions[1],
+                width=self.button_dimensions[0],
+                relief="raised"
+            )
+            label_button.pack(pady=10)
+            label_button.bind("<Button-1>", lambda event, frame=key: self.show_content_frame(frame))
+
+    def show_content_frame(self, frame_name):
+        print(f"Showing Frame {frame_name}")
+        # Hide the current frame
+        if self.current_content_frame:
+            self.current_content_frame.frame.pack_forget()
+
+        # Show the new frame
+        self.current_content_frame = self.content_frame_dict[frame_name]
+        self.current_content_frame.frame.pack(expand=True, fill="both")
 
     def create_menu(self):
         self.main_menu = tk.Menu(self.root)
