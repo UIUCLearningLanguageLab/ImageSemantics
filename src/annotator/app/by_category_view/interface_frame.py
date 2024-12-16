@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
 import re
-from ..config import Config
-from ..utils import create_label, create_button, create_option_menu
+from src.annotator.config import Config
+from src.annotator.app.utils import create_label, create_button, create_option_menu
 
 
 class InterfaceFrame:

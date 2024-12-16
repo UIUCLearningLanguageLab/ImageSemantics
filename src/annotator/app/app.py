@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
-from .config import Config
-from .by_category_view import by_category_view
-from .dataframe_view import dataframe_view
-from .frame_view import frame_view
-from .video_view import video_view
+from src.annotator.config import Config
+from src.annotator.app.by_category_view import by_category_view
+from src.annotator.app.dataframe_view import dataframe_view
+from src.annotator.app.frame_view import frame_view
+from src.annotator.app.video_view import video_view
 
 
 class RelabelerApp:
